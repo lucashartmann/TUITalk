@@ -1,0 +1,9 @@
+#lv_usuarios {
+    width: 20%;
+    margin-left: 2;
+}
+
+Input {
+    margin-top: 2;
+    height: 20%;
+}
