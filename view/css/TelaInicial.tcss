@@ -1,9 +1,22 @@
+TelaInicial {
+    background: rgba(255, 170, 44, 1);
+}
+
 #lv_usuarios {
     width: 20%;
     margin-left: 2;
 }
 
+TextArea {
+    margin: 2;
+}
+
 Input {
-    margin-top: 2;
-    height: 20%;
+    margin: 2;
+    height: 13%;
+    background: rgba(78, 64, 44, 1);
+}
+
+ListView {
+    background: rgba(61, 51, 37, 1);
 }
