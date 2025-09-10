@@ -3,38 +3,29 @@ from textual.widgets import Input, TextArea, Static, ListItem, ListView, Button,
 from textual.containers import HorizontalScroll, VerticalScroll, Container
 from textual.events import Key
 from textual.binding import Binding
-from textual.message import Message
+from textual.timer import Timer
 from database import Banco
 
 
-class ChatMessage(Message):
-    def __init__(self, sender, text):
-        super().__init__()
-        self.sender = sender
-        self.text = text
-
-
-class UpdateUsers(Message):
-    def __init__(self, users):
-        super().__init__()
-        self.users = users
-
-
 class TelaInicial(Screen):
-
     CSS_PATH = "css/TelaInicial.tcss"
     nome_user = ""
-    users = list()
+    users = []
+    mensagens = []
+    _poll_timer: Timer = None
 
     BINDINGS = {
-        Binding("ctrl+q", "d", "Sair")
+        Binding("ctrl+q", "sair", "Sair")
     }
 
     def action_sair(self):
-        for user in self.users:
-            if self.nome_user == user:
-                user = f"🔴{self.nome_user}"
-        self.screen.app.exit()
+        if self.nome_user:
+            self.users = [
+                u for u in self.users if not u.endswith(self.nome_user)]
+            self.users.append(f"🔴 {self.nome_user}")
+            Banco.salvar("banco.db", "usuarios", self.users)
+            self.nome_user = ""
+            self.app.exit()
 
     def compose(self):
         yield Header()
@@ -46,17 +37,24 @@ class TelaInicial(Screen):
         yield Footer()
 
     def on_key(self, event: Key):
-        if event.key == "enter":
+        if event.key == "enter" and self.nome_user:
             input_widget = self.query_one(Input)
             if input_widget.value:
-                message = ChatMessage(self.nome_user, input_widget.value)
-                self.post_message(message)
+                nova_mensagem = f"{self.nome_user}\n  {input_widget.value}\n"
+                self.mensagens.append(nova_mensagem)
+                Banco.salvar("banco.db", "mensagens", self.mensagens)
+                self.query_one(TextArea).text += nova_mensagem
                 input_widget.clear()
 
     def on_mount(self):
-        carregar = Banco.carregar("banco.db", "usuarios")
-        if carregar:
-            self.users = carregar
+        carregar_users = Banco.carregar("banco.db", "usuarios")
+        if carregar_users:
+            self.users = carregar_users
+        carregar_msgs = Banco.carregar("banco.db", "mensagens")
+        if carregar_msgs:
+            self.mensagens = carregar_msgs
+            self.query_one(TextArea).text = "".join(self.mensagens)
+
         if not self.nome_user:
             for widget in self.screen.children:
                 widget.disabled = True
@@ -67,13 +65,27 @@ class TelaInicial(Screen):
             container.mount(Input(placeholder="Nome aqui", id="usuario"))
             container.mount(Button("Entrar"))
 
+        self._poll_timer = self.set_interval(5, self.poll_dados)
+
+    def poll_dados(self):
+        carregar_users = Banco.carregar("banco.db", "usuarios")
+        if carregar_users and carregar_users != self.users:
+            self.users = carregar_users
+            self.atualizar_lista_users()
+
+        carregar_msgs = Banco.carregar("banco.db", "mensagens")
+        if carregar_msgs and carregar_msgs != self.mensagens:
+            self.mensagens = carregar_msgs
+            self.query_one(TextArea).text = "".join(self.mensagens)
+
     def on_button_pressed(self):
         valor_input = self.query_one("#usuario", Input).value
         if valor_input:
-            self.nome_user = self.query_one("#usuario", Input).value
-            self.users.append(f"🟢 {self.nome_user}")
+            self.nome_user = valor_input
+            if f"🟢 {self.nome_user}" not in self.users:
+                self.users.append(f"🟢 {self.nome_user}")
+            Banco.salvar("banco.db", "usuarios", self.users)
             self.query_one(Container).remove()
-            self.post_message(UpdateUsers(self.users))
             for widget in self.screen.children:
                 widget.disabled = False
             self.atualizar_lista_users()
@@ -83,17 +95,5 @@ class TelaInicial(Screen):
     def atualizar_lista_users(self):
         lista = self.query_one("#lv_usuarios", ListView)
         lista.remove_children()
-
         for user in self.users:
             lista.append(ListItem(Static(user)))
-
-    def on_chat_message(self, message: ChatMessage):
-        self.query_one(
-            TextArea).text += f"{message.sender}\n  {message.text}\n"
-
-    def on_update_users(self):
-        Banco.salvar("banco.db", "usuarios", self.users)
-        carregar = Banco.carregar("banco.db", "usuarios")
-        if carregar:
-            self.users = carregar
-        self.atualizar_lista_users()
