@@ -7,5 +7,8 @@ class App(App):
         "tela_inicial": TelaInicial.TelaInicial
     }
     
+    
     def on_mount(self):
         self.push_screen("tela_inicial")
+        
+        
