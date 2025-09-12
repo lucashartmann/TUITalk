@@ -21,15 +21,3 @@ ListView {
     background: rgba(61, 51, 37, 1);
 }
 
-Container {
-    align: center middle;
-    content-align: center middle;
-    background: green;
-    width: 30%;
-    height: 30%;
-    color: black;
-}
-
-#usuario {
-    height: 32%;
-}

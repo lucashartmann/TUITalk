@@ -1,0 +1,12 @@
+TelaLogin {
+    background: rgba(206, 233, 132, 1);
+    align: center middle;
+    color: black;
+}
+
+#usuario {
+    height: auto;
+    width: auto;
+    margin: 2;
+    align: center middle;
+}
