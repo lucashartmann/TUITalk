@@ -6,14 +6,12 @@ server = Server(
     "python Main.py",
     port=port,
     host="0.0.0.0",
-    public_url="https://55849bcfb94e.ngrok-free.app"
+    public_url="https://d8871c7eb5d7.ngrok-free.app"
 )
 
 if __name__ == "__main__":
-    if os.path.isdir("data/banco.db"):
-        os.remove("data/banco.db")
-    if os.path.isdir("data/banco.db-shm"):
-        os.remove("data/banco.db-shm")
-    if os.path.isdir("data/banco.db-wal"):
-        os.remove("data/banco.db-wal")
+    if os.path.exists("data"):
+        if len(os.listdir("data")) > 0:
+            for arquivo in os.listdir("data"):
+                os.remove(f"data/{arquivo}")
     server.serve()

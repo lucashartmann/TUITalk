@@ -11,9 +11,10 @@ class TelaLogin(Screen):
 
     def compose(self):
         yield Header()
-        yield Static("Ｌｏｇｉｎ", id="titulo")
-        yield Static("Nome")
+        yield Static("Nome:")
         yield Input(placeholder="Nome aqui", id="usuario")
+        yield Static("Cor do nome:")
+        yield Input(placeholder="Cor aqui")
         yield Button("Entrar")
         yield Footer()
 

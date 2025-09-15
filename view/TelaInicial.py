@@ -1,9 +1,10 @@
 from textual.screen import Screen
 from textual.widgets import Input, TextArea, Static, ListItem, ListView, Header, Footer
-from textual.containers import HorizontalScroll, VerticalScroll
+from textual.containers import HorizontalScroll, VerticalScroll, Container
 from textual.events import Key
 from textual.timer import Timer
 from database import Banco
+from controller import Controller
 import time
 
 
@@ -13,13 +14,15 @@ class TelaInicial(Screen):
     users = dict()
     mensagens = []
     _poll_timer: Timer = None
+    imagens = dict()
 
     def compose(self):
         yield Header()
         with HorizontalScroll():
             with VerticalScroll():
-                yield TextArea(read_only=True)  # read-only = True
+                yield TextArea(read_only=True)
                 yield Input(placeholder="Digite aqui")
+            yield VerticalScroll(id="vs_imagens")
             yield ListView(id="lv_usuarios")
         yield Footer()
 
@@ -27,10 +30,29 @@ class TelaInicial(Screen):
         if event.key == "enter" and self.nome_user:
             input_widget = self.query_one(Input)
             if input_widget.value:
-                nova_mensagem = f"{self.nome_user}\n  {input_widget.value}\n"
-                self.mensagens.append(nova_mensagem)
-                Banco.salvar("banco.db", "mensagens", self.mensagens)
-                self.query_one(TextArea).text += nova_mensagem
+                if "//" in input_widget.value or "\\" in input_widget.value:
+                    imagem_gerada = Controller.resize(input_widget.value)
+                    if imagem_gerada:
+                        pixel = Controller.gerar_pixel(imagem_gerada)
+                        if pixel:
+                            imagem_static = Static(pixel)
+                            self.query_one(
+                                "#vs_imagens", VerticalScroll).styles.width = "20%"
+                            self.query_one("#vs_imagens", VerticalScroll).mount(
+                                Static(f"{self.nome_user}:"))
+                            self.query_one("#vs_imagens", VerticalScroll).mount(
+                                imagem_static)
+                            self.imagens[self.nome_user] = pixel
+                            Banco.salvar("banco.db", "imagens", self.imagens)
+                        else:
+                            self.notify("ERRO com a imagem!")
+                    else:
+                        self.notify("ERRO com a imagem!")
+                else:
+                    nova_mensagem = f"{self.nome_user}\n  {input_widget.value}\n"
+                    self.mensagens.append(nova_mensagem)
+                    Banco.salvar("banco.db", "mensagens", self.mensagens)
+                    self.query_one(TextArea).text += nova_mensagem
                 input_widget.clear()
 
     def on_mount(self):
@@ -44,6 +66,16 @@ class TelaInicial(Screen):
         if carregar_msgs:
             self.mensagens = carregar_msgs
             self.query_one(TextArea).text = "".join(self.mensagens)
+
+        carregar_imagens = Banco.carregar("banco.db", "imagens")
+        if carregar_imagens:
+            self.query_one(
+                "#vs_imagens", VerticalScroll).styles.width = "20%"
+            for usuario, imagem in carregar_imagens.items():
+                self.query_one("#vs_imagens", VerticalScroll).mount(
+                    Static(f"{usuario}:"))
+                self.query_one("#vs_imagens", VerticalScroll).mount(
+                    Static(imagem))
 
         self._poll_timer = self.set_interval(2, self.poll_dados)
 

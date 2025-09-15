@@ -21,3 +21,12 @@ ListView {
     background: rgba(61, 51, 37, 1);
 }
 
+#vs_imagens {
+    margin: 2;
+    background: rgba(61, 51, 37, 1);
+    width: 0%;
+}
+
+#vs_imagens Static {
+    margin: 2;
+}

@@ -1,12 +1,11 @@
 TelaLogin {
-    background: rgba(206, 233, 132, 1);
+    background: rgba(40, 67, 88, 1);
     align: center middle;
     color: black;
+    width: 100%;
 }
 
-#usuario {
-    height: auto;
-    width: auto;
+Input {
+    width: 50%;
     margin: 2;
-    align: center middle;
 }
