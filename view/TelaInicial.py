@@ -1,11 +1,12 @@
 from textual.screen import Screen
-from textual.widgets import Input, TextArea, Static, ListItem, ListView, Header, Footer
+from textual.widgets import Input, TextArea, Static, ListItem, ListView, Header, Button, Footer
 from textual.containers import HorizontalScroll, VerticalScroll, Container
 from textual.events import Key
 from textual.timer import Timer
 from database import Banco
 from controller import Controller
 import time
+from model import Audio
 
 
 class TelaInicial(Screen):
@@ -15,6 +16,7 @@ class TelaInicial(Screen):
     mensagens = []
     _poll_timer: Timer = None
     imagens = dict()
+    audio = Audio()
 
     def compose(self):
         yield Header()
@@ -25,6 +27,15 @@ class TelaInicial(Screen):
             yield VerticalScroll(id="vs_imagens")
             yield ListView(id="lv_usuarios")
         yield Footer()
+        
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "gravar":
+            if not self.audio.is_recording:
+                self.audio.start_recording()
+            else:
+                self.audio.stop_recording()
+        elif event.button.id == "play":
+            self.audio.play_audio()
 
     def on_key(self, event: Key):
         if event.key == "enter" and self.nome_user:
