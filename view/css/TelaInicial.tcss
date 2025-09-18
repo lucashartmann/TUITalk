@@ -30,3 +30,12 @@ ListView {
 #vs_imagens Static {
     margin: 2;
 }
+
+Button {
+    background: 0%;
+    margin-left: 1;
+    border: none;
+    width: 2;
+    height: 2;
+    margin-top: 2;
+}

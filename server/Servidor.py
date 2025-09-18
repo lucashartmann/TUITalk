@@ -6,7 +6,7 @@ server = Server(
     "python Main.py",
     port=port,
     host="0.0.0.0",
-    public_url="https://d8871c7eb5d7.ngrok-free.app"
+    public_url="https://textual-message-ekb5gmomb-lucashartmanns-projects.vercel.app"
 )
 
 if __name__ == "__main__":
