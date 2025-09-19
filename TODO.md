@@ -4,5 +4,7 @@
 - Criar objeto pessoa ?
 - Arrumar desing TelaLogin, centralizar widgets
 
-- Implementar chamadas de video
-- Implementar videos
+
+- Quando a pessoa da doubleclick no audio ele para ou pausa
+- poder fechar a tela de selecionar arquivos
+- Implementar documentos
