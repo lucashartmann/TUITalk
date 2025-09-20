@@ -1,20 +1,18 @@
 import cv2
 from PIL import Image
 from rich_pixels import Pixels
+from textual.app import App, ComposeResult
 from textual.widgets import Static
 from textual.timer import Timer
-from textual.containers import Container
-from textual.app import App
-from database import Banco
+
 
 class VideoWidget(Static):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.cap = None
         self.timer: Timer | None = None
-        self.width = 30
-        self.height = 30
-        self.nome_user = ""
+        self.width = 80
+        self.height = 60
 
     def on_mount(self) -> None:
         self.cap = cv2.VideoCapture(0)
@@ -25,7 +23,7 @@ class VideoWidget(Static):
 
         self.timer = self.set_interval(1/15, self.update_frame)
 
-    def resize_image(self, image: Image.Image):
+    def resize_image(self, image: Image.Image) -> Image.Image | None:
         size = (self.width, self.height)
         try:
             image.thumbnail(size, Image.Resampling.LANCZOS)
@@ -33,7 +31,7 @@ class VideoWidget(Static):
             return None
         return image
 
-    def update_frame(self):
+    def update_frame(self) -> None:
         if not self.cap or not self.cap.isOpened():
             return
 
@@ -51,17 +49,19 @@ class VideoWidget(Static):
 
         pixels = Pixels.from_image(img)
         self.update(pixels)
-        
-        Banco.salvar("banco.db", "chamada_em_curso", {self.nome_user : frame_rgb})
 
-    def on_unmount(self):
+    def on_unmount(self) -> None:
         if self.timer:
             self.timer.stop()
         if self.cap and self.cap.isOpened():
             self.cap.release()
 
-class App(App):
-    def compose(self):
-        yield Container(VideoWidget())
-        
-App().run()
+
+class VideoApp(App):
+    def compose(self) -> ComposeResult:
+        yield VideoWidget()
+
+
+if __name__ == "__main__":
+    app = VideoApp()
+    app.run()

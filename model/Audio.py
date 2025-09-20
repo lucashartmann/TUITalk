@@ -11,6 +11,7 @@ class ChatVoz:
         super().__init__()
         self.fs = 44100
         self.is_recording = False
+        self.is_playing = False
         self.frames = []
 
     def start_recording(self):
@@ -38,9 +39,14 @@ class ChatVoz:
             wf.writeframes((audio * 32767).astype(np.int16).tobytes())
 
     def play_audio(self, path="mensagem.wav"):
+        if self.is_playing:
+            sd.stop()
+            self.is_playing = False
+
         if not os.path.exists(path):
             return
 
+        self.is_playing = True
         ext = os.path.splitext(path)[1].lower()
         if ext == ".wav":
             with wave.open(path, "rb") as wf:
@@ -55,6 +61,7 @@ class ChatVoz:
                 samples = samples.reshape((-1, 2))
             sd.play(samples, samplerate=audio.frame_rate)
             sd.wait()
+        self.is_playing = False
 
     def tocar_audio(self, audio_segment):
         if isinstance(audio_segment, AudioSegment):

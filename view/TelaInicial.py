@@ -1,17 +1,19 @@
 import tempfile
 from textual.screen import Screen
 from textual.widgets import Input, TextArea, Static, ListItem, ListView, Header, Button, Footer
-from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup
+from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup, Container
 from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
 from database import Banco
 import time
-from model import Audio, Video, Imagem
+from model import Audio, Video, Imagem, ChamadaVideo
 import wave
 from view import TelaSelecionar
 from pydub import AudioSegment
 import io
+from PIL import Image
+from rich_pixels import Pixels
 
 
 class TelaInicial(Screen):
@@ -25,6 +27,8 @@ class TelaInicial(Screen):
     obj_imagem = Imagem.Imagem()
     videos = dict()
     resultado = ""
+    documentos = dict()
+    atendeu = False
 
     def compose(self):
         yield Header()
@@ -68,8 +72,17 @@ class TelaInicial(Screen):
                     self.audios[nova_mensagem.name] = self.resultado["arquivo"]
                     arquivo = self.resultado["arquivo"]
                     buffer = io.BytesIO()
+
                     if isinstance(arquivo, AudioSegment):
-                        blob = arquivo.export(buffer, format="mp3")
+                        if blob[:3] == b'ID3' or (blob[0] == 0xFF and (blob[1] & 0xE0) == 0xE0):
+                            blob = arquivo.export(buffer, format="mp3")
+                        elif blob[:4] == b'OggS':
+                            blob = arquivo.export(buffer, format="ogg")
+                        elif blob[:4] == b'fLaC':
+                            blob = arquivo.export(buffer, format="flac")
+                        else:
+                            return
+
                     elif isinstance(arquivo, wave.Wave_read):
                         with wave.open(buffer, "wb") as wf:
                             wf.setnchannels(arquivo.getnchannels())
@@ -78,6 +91,7 @@ class TelaInicial(Screen):
                             wf.writeframes(arquivo.readframes(
                                 arquivo.getnframes()))
                         blob = buffer.getvalue()
+
                     self.mensagens.append(
                         {"autor": self.nome_user, "mensagem": "▶︎ •၊၊||၊|။||||။‌‌‌‌‌၊|• ", "audio": blob, "id": hash(self.resultado["arquivo"])})
                     self.query_one(TextArea).mount(nova_mensagem)
@@ -89,7 +103,18 @@ class TelaInicial(Screen):
                     nome = Static(self.nome_user)
                     blob = self.resultado["arquivo"].read()
 
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+                    if blob[:4] == b'RIFF':
+                        sufixo = ".avi"
+                    elif blob[4:8] == b'ftyp':
+                        sufixo = ".mp4"
+                    elif blob[:4] == b'\x1A\x45\xDF\xA3':
+                        sufixo = ".mkv"
+                    elif blob[:4] == b'OggS':
+                        sufixo = ".ogv"
+                    else:
+                        return
+
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=sufixo) as tmp:
                         tmp.write(blob)
                         tmp_path = tmp.name
 
@@ -103,7 +128,12 @@ class TelaInicial(Screen):
                                  self.mensagens)
 
                 case "documento":
-                    pass
+                    self.documentos[hash(
+                        self.resultado["arquivo"])] = self.resultado["arquivo"]
+                    self.mensagens.append(
+                        {"autor": self.nome_user, "documento": self.resultado["arquivo"], "id": hash(self.resultado["arquivo"])})
+                    Banco.salvar("banco.db", "mensagens",
+                                 self.mensagens)
 
     async def on_click(self, evento: Click):
         if isinstance(evento.widget, Static):
@@ -112,8 +142,13 @@ class TelaInicial(Screen):
                 self.audio.tocar_audio(arquivo)
             if evento.widget.id == "selecionar_arquivo":
                 await self.mount(TelaSelecionar.TelaSelecionar())
+        if evento.widget.parent.parent.id == "lv_usuarios":
+            if isinstance(evento.widget, Static):
+                if "📞" in evento.widget.content:
+                    Banco.salvar("banco.db", "chamada", {
+                        self.nome_user: evento.widget.content[2:-2]})
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
+    async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "gravar":
             if not self.audio.is_recording:
                 self.query_one(Button).label = "⬛"
@@ -142,6 +177,16 @@ class TelaInicial(Screen):
                 self.query_one(TextArea).mount(nova_mensagem)
                 Banco.salvar("banco.db", "mensagens",
                              self.mensagens)
+                
+        elif event.button.id == "bt_ligacao_true" or event.button.id == "bt_ligacao_false":
+            await self.query_one("#container_call", Container).remove()
+            Banco.deletar("banco.db", "chamada")
+            Banco.salvar("banco.db", "chamata_atendida", False)
+            if event.button.id == "bt_ligacao_true":
+                self.atendeu = True
+                Banco.salvar("banco.db", "chamata_atendida", True)
+                self.ligacao()
+
         # elif event.button.id == "play":
         #     self.audio.play_audio()
 
@@ -218,12 +263,23 @@ class TelaInicial(Screen):
 
                 elif "video":
                     nome = Static(mensagem["autor"])
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-                        tmp.write(mensagem["video"])
+                    blob = mensagem["video"]
+                    if blob[:4] == b'RIFF':
+                        sufixo = ".avi"
+                    elif blob[4:8] == b'ftyp':
+                        sufixo = ".mp4"
+                    elif blob[:4] == b'\x1A\x45\xDF\xA3':
+                        sufixo = ".mkv"
+                    elif blob[:4] == b'OggS':
+                        sufixo = ".ogv"
+                    else:
+                        return
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=sufixo) as tmp:
+                        tmp.write(blob)
                         tmp_path = tmp.name
                     stt = Static((Video.Video(tmp_path)),
                                  name=mensagem["id"])
-                    self.videos[mensagem["id"]] = mensagem["video"]
+                    self.videos[mensagem["id"]] = blob
                     for stt_exibido in self.query_one(TextArea).query(Static):
                         if stt.name == stt.name:
                             encontrado = True
@@ -247,8 +303,60 @@ class TelaInicial(Screen):
 
         self._poll_timer = self.set_interval(2, self.poll_dados)
 
+    montou_ligacao = False
+    montou_caller = False
+
+    def ligacao(self):
+            if self.montou_ligacao:
+                container = self.get_child_by_id(
+                    "container_ligacao_em_curso")
+            
+                dicionario = Banco.carregar("banco.db", "chamada_em_curso")
+                if dicionario:
+                    if self.nome_user not in dicionario.keys():
+                        frame_rgb = dicionario[self.nome_user]
+                        img = Image.fromarray(frame_rgb)
+                        pixels = Pixels.from_image(img)
+                        
+                        if not self.montou_caller:
+                            stt_video = ChamadaVideo.VideoWidget(id="other")
+                            stt_video.update(pixels)
+                            container.mount(stt_video)
+                            self.montou_caller = True
+                        else:
+                            stt_video = container.get_child_by_id("other")
+                            stt_video.update(pixels)
+            else:
+                container = Container(id="container_ligacao_em_curso")
+                self.mount(container)
+                stt_video = ChamadaVideo.VideoWidget(id=self.nome_user)
+                stt_video.nome_user = self.nome_user
+                container.mount(stt_video)
+                self.montou_ligacao = True
+
+            # se a pessoa clicou para desligar a ligação aí faz self.montou_ligacao = False, self.atendeu = False
+
+    montou_notificacao = False
+
     def poll_dados(self):
         if self.nome_user != "":
+
+            chamada = Banco.carregar("banco.db", "chamada")
+            if chamada:
+                if self.nome_user in chamada.values() and not self.montou_notificacao:
+                    container = Container(id="container_call")
+                    self.mount(container)
+                    container.mount(
+                        Static(F"{chamada.keys()} está te ligando! Aceitar?"))
+                    container.mount(Button("Sim", id="bt_ligacao_true"))
+                    container.mount(Button("Não", id="bt_ligacao_false"))
+                    self.montou_notificacao = True
+                    
+            chamda_atendida = Banco.carregar("banco.db", "chamata_atendida")
+            if chamda_atendida:
+                self.ligacao()
+
+
             self.atualizar_usuario()
             users = self.listar_usuarios()
 
@@ -311,12 +419,23 @@ class TelaInicial(Screen):
 
                     elif "video":
                         nome = Static(mensagem["autor"])
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-                            tmp.write(mensagem["video"])
+                        blob = mensagem["video"]
+                        if blob[:4] == b'RIFF':
+                            sufixo = ".avi"
+                        elif blob[4:8] == b'ftyp':
+                            sufixo = ".mp4"
+                        elif blob[:4] == b'\x1A\x45\xDF\xA3':
+                            sufixo = ".mkv"
+                        elif blob[:4] == b'OggS':
+                            sufixo = ".ogv"
+                        else:
+                            return
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=sufixo) as tmp:
+                            tmp.write(blob)
                             tmp_path = tmp.name
                         stt = Static((Video.Video(tmp_path)),
                                      name=mensagem["id"])
-                        self.videos[mensagem["id"]] = mensagem["video"]
+                        self.videos[mensagem["id"]] = blob
                         for stt_exibido in self.query_one(TextArea).query(Static):
                             if stt.name == stt.name:
                                 encontrado = True
@@ -325,8 +444,8 @@ class TelaInicial(Screen):
                             self.query_one(TextArea).mount(nome, stt)
                         pass
 
-                    elif "documentos":
-                        pass
+                    elif "documento":
+                        self.documentos[mensagem["id"]] = mensagem["documento"]
 
                     else:
                         stt = Static(
@@ -345,14 +464,14 @@ class TelaInicial(Screen):
             ativos = {}
             for chave, valor in usuarios.items():
                 if agora - valor <= 60:
-                    ativos[f"🟢 {chave}"] = valor
+                    ativos[f"🟢 {chave} 📞"] = valor
                 else:
                     ativos[f"🔴 {chave}"] = valor
             return ativos
 
     def atualizar_usuario(self):
         agora = int(time.time())
-        usuarios = Banco.carregar("banco.db", "usuarios") or {}
+        usuarios = Banco.carregar("banco.db", "usuarios")
         usuarios[self.nome_user] = agora
         Banco.salvar("banco.db", "usuarios", usuarios)
         self.users = self.listar_usuarios()

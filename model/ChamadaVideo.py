@@ -3,8 +3,6 @@ from PIL import Image
 from rich_pixels import Pixels
 from textual.widgets import Static
 from textual.timer import Timer
-from textual.containers import Container
-from textual.app import App
 from database import Banco
 
 class VideoWidget(Static):
@@ -60,8 +58,3 @@ class VideoWidget(Static):
         if self.cap and self.cap.isOpened():
             self.cap.release()
 
-class App(App):
-    def compose(self):
-        yield Container(VideoWidget())
-        
-App().run()
