@@ -91,12 +91,13 @@ class TelaSelecionar(Container):
 
     def atualizar_lista_arquivos(self):
         list_view = self.query_one(ListView)
+        list_view.clear()
 
         for arquivo in self.lista_arquivos:
             try:
                 if arquivo[arquivo.index("."):] in self.extensoes_fotos or arquivo[arquivo.index("."):] in self.extensoes_videos or arquivo[arquivo.index("."):] in self.extensoes_documentos or arquivo[arquivo.index("."):] in self.extensoes_audios:
                     list_view.append(ListItem(Static(arquivo)))
             except:
-                self.notify("ERRO! Arquivos inválidos")
+                pass
 
 

@@ -3,13 +3,6 @@ TelaInicial {
     layers: below above;
 }
 
-#container_call, #container_ligacao_em_curso  {
-    height: 50%;
-    width: 50%;
-    layer: above;
-    align: center middle;
-    background:rgba(206, 151, 89, 1);
-}
 
 #lv_usuarios {
     width: 20%;

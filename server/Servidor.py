@@ -6,7 +6,7 @@ server = Server(
     "python Main.py",
     port=port,
     host="0.0.0.0",
-    public_url="https://115c481fae41.ngrok-free.app"
+    public_url="https://b663d8809f44.ngrok-free.app"
 )
 
 if __name__ == "__main__":

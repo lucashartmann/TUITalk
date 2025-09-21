@@ -38,41 +38,25 @@ class ChatVoz:
             wf.setframerate(self.fs)
             wf.writeframes((audio * 32767).astype(np.int16).tobytes())
 
-    def play_audio(self, path="mensagem.wav"):
+
+    def tocar_audio(self, audio_segment):
         if self.is_playing:
             sd.stop()
             self.is_playing = False
-
-        if not os.path.exists(path):
             return
-
-        self.is_playing = True
-        ext = os.path.splitext(path)[1].lower()
-        if ext == ".wav":
-            with wave.open(path, "rb") as wf:
-                data = wf.readframes(wf.getnframes())
-                audio = np.frombuffer(data, dtype=np.int16)
-                sd.play(audio, samplerate=wf.getframerate())
-                sd.wait()
-        else:
-            audio = AudioSegment.from_file(path)
-            samples = np.array(audio.get_array_of_samples())
-            if audio.channels == 2:
-                samples = samples.reshape((-1, 2))
-            sd.play(samples, samplerate=audio.frame_rate)
-            sd.wait()
-        self.is_playing = False
-
-    def tocar_audio(self, audio_segment):
+        
         if isinstance(audio_segment, AudioSegment):
             samples = np.array(audio_segment.get_array_of_samples())
             if audio_segment.channels == 2:
                 samples = samples.reshape((-1, 2))
             sd.play(samples, samplerate=audio_segment.frame_rate)
-            sd.wait()
+            self.is_playing = True
 
         elif isinstance(audio_segment, wave.Wave_read):
             data = audio_segment.readframes(audio_segment.getnframes())
             audio = np.frombuffer(data, dtype=np.int16)
             sd.play(audio, samplerate=audio_segment.getframerate())
-            sd.wait()
+            self.is_playing = True
+
+
+       
