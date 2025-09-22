@@ -7,13 +7,15 @@ from textual.timer import Timer
 from textual.events import Click
 from database import Banco
 import time
-from model import Audio, Video, Imagem, ChamadaVideo
+from model import Audio, Video, Imagem
 import wave
 from view import TelaSelecionar
 from pydub import AudioSegment
 import io
 from PIL import Image
 from rich_pixels import Pixels
+
+from view.widgets import ChamadaVideo
 
 
 class TelaInicial(Screen):
@@ -29,6 +31,7 @@ class TelaInicial(Screen):
     resultado = ""
     documentos = dict()
     atendeu = False
+    chamada_em_curso = dict()
 
     def compose(self):
         yield Header()
@@ -177,7 +180,7 @@ class TelaInicial(Screen):
                 self.query_one(TextArea).mount(nova_mensagem)
                 Banco.salvar("banco.db", "mensagens",
                              self.mensagens)
-                
+
         elif event.button.id == "bt_ligacao_true" or event.button.id == "bt_ligacao_false":
             await self.query_one("#container_call", Container).remove()
             Banco.deletar("banco.db", "chamada")
@@ -305,36 +308,51 @@ class TelaInicial(Screen):
 
     montou_ligacao = False
     montou_caller = False
+    salvou = False
 
     def ligacao(self):
-            if self.montou_ligacao:
-                container = self.get_child_by_id(
-                    "container_ligacao_em_curso")
-            
-                dicionario = Banco.carregar("banco.db", "chamada_em_curso")
-                if dicionario:
-                    if self.nome_user not in dicionario.keys():
-                        frame_rgb = dicionario[self.nome_user]
-                        img = Image.fromarray(frame_rgb)
-                        pixels = Pixels.from_image(img)
-                        
-                        if not self.montou_caller:
-                            stt_video = ChamadaVideo.VideoWidget(id="other")
-                            stt_video.update(pixels)
-                            container.mount(stt_video)
-                            self.montou_caller = True
-                        else:
-                            stt_video = container.get_child_by_id("other")
-                            stt_video.update(pixels)
-            else:
-                container = Container(id="container_ligacao_em_curso")
-                self.mount(container)
-                stt_video = ChamadaVideo.VideoWidget(id=self.nome_user)
-                stt_video.nome_user = self.nome_user
-                container.mount(stt_video)
-                self.montou_ligacao = True
+        if not self.salvou:
+            self.chamada_em_curso.append({self.nome_user: ""})
+            Banco.salvar("banco.db", "chamada_em_curso", self.chamada_em_curso)
+            self.salvou = True
 
-            # se a pessoa clicou para desligar a ligação aí faz self.montou_ligacao = False, self.atendeu = False
+        if self.montou_ligacao:
+            container = self.get_child_by_id(
+                "container_ligacao_em_curso")
+
+            self.chamada_em_curso = Banco.carregar(
+                "banco.db", "chamada_em_curso")
+
+            if len(self.chamada_em_curso) > 1:
+
+                for dict in self.chamada_em_curso:
+                    for usuario, frame in dict.items():
+                        if usuario != self.nome_user:
+                            caller = usuario
+                            frame = frame
+
+                if not self.montou_caller:
+                    receiver = ChamadaVideo.Receiver(id=caller)
+                    receiver.update_frame(frame)
+                    container.mount(receiver)
+                else:
+                    camera_caller = container.get_child_by_id(caller)
+                    camera_caller.update_frame(frame)
+            
+
+        else:
+            container = Container(id="container_ligacao_em_curso")
+            self.mount(container)
+            botao_desligar = Static("❌")
+            botao_desligar.styles.height = 10
+            botao_desligar.styles.width = 10
+            container.mount(botao_desligar)
+            stt_video = ChamadaVideo.Caller(id=self.nome_user)
+            stt_video.nome_user = self.nome_user
+            container.mount(stt_video)
+            self.montou_ligacao = True
+
+        # se a pessoa clicou para desligar a ligação aí faz self.montou_ligacao = False, self.atendeu = False
 
     montou_notificacao = False
 
@@ -351,11 +369,10 @@ class TelaInicial(Screen):
                     container.mount(Button("Sim", id="bt_ligacao_true"))
                     container.mount(Button("Não", id="bt_ligacao_false"))
                     self.montou_notificacao = True
-                    
+
             chamda_atendida = Banco.carregar("banco.db", "chamata_atendida")
             if chamda_atendida:
                 self.ligacao()
-
 
             self.atualizar_usuario()
             users = self.listar_usuarios()

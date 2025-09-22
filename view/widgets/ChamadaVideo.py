@@ -5,7 +5,7 @@ from textual.widgets import Static
 from textual.timer import Timer
 from database import Banco
 
-class VideoWidget(Static):
+class Caller(Static):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.cap = None
@@ -50,8 +50,58 @@ class VideoWidget(Static):
         pixels = Pixels.from_image(img)
         self.update(pixels)
         
-        Banco.salvar("banco.db", "chamada_em_curso", {self.nome_user : frame_rgb})
+        
+        lista_dict = Banco.carregar("banco.db", "chamada_em_curso")
+        for dict in lista_dict:
+            for usuario, frame in dict.items():
+                if usuario == self.nome_user:
+                    frame = frame_rgb
+        
+        Banco.salvar("banco.db", "chamada_em_curso", lista_dict)
 
+    def on_unmount(self):
+        if self.timer:
+            self.timer.stop()
+        if self.cap and self.cap.isOpened():
+            self.cap.release()
+
+class Receiver(Static):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.cap = None
+        self.timer: Timer | None = None
+        self.width = 30
+        self.height = 30
+        self.nome_user = ""
+
+    def on_mount(self) -> None:
+        self.cap = cv2.VideoCapture(0)
+
+        if not self.cap.isOpened():
+            self.update("Could not open camera")
+            return
+
+        self.timer = self.set_interval(1/15, self.update_frame)
+
+    def resize_image(self, image: Image.Image):
+        size = (self.width, self.height)
+        try:
+            image.thumbnail(size, Image.Resampling.LANCZOS)
+        except ValueError:
+            return None
+        return image
+
+    def update_frame(self, frame_rgb):
+        img = Image.fromarray(frame_rgb)
+
+        img = self.resize_image(img)
+        if img is None:
+            return
+
+        pixels = Pixels.from_image(img)
+        self.update(pixels)
+        
+    
     def on_unmount(self):
         if self.timer:
             self.timer.stop()
