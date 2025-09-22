@@ -1,18 +1,21 @@
 import tempfile
+import time
+import wave
+import io
+
 from textual.screen import Screen
-from textual.widgets import Input, TextArea, Static, ListItem, ListView, Header, Button, Footer, ProgressBar
+from textual.widgets import Input, TextArea, Static, ListItem, ListView, Header, Footer, ProgressBar
 from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup
 from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
+
 from database import Banco
-import time
-from model import Audio, Imagem
-import wave
-from view import TelaSelecionar
-from pydub import AudioSegment
-import io
+from model import Audio, Imagem, Download
 from view.widgets import Video
+
+from pydub import AudioSegment
+
 
 class TelaInicial(Screen):
     CSS_PATH = "css/TelaInicial.tcss"
@@ -34,21 +37,18 @@ class TelaInicial(Screen):
                 yield TextArea(read_only=True)
                 with HorizontalGroup():
                     yield Input(placeholder="Digite aqui")
-                    yield Static("📎", id="selecionar_arquivo")
-                    yield Button("🔴", id="gravar")
             yield ListView(id="lv_usuarios")
         yield Footer()
 
-    async def on_tela_selecionar_selecionado(self, message: TelaSelecionar.TelaSelecionar.Selecionado):
-        self.resultado = message.valor
-
-        if self.resultado:
-
-            match self.resultado["tipo"]:
-
+    def exibir_midia(self, dados):
+        if dados:
+            
+            match dados["tipo"]:
+                
                 case "imagem":
+                    self.notify("imagensss")
                     imagem_gerada = self.obj_imagem.resizeImagem(
-                        self.resultado["arquivo"])
+                        dados["arquivo"])
                     if imagem_gerada:
                         pixel = self.obj_imagem.gerar_pixel(
                             imagem_gerada)
@@ -64,8 +64,8 @@ class TelaInicial(Screen):
                                          self.mensagens)
 
                 case "audio":
-                    self.audios[hash(self.resultado["arquivo"])] = self.resultado["arquivo"]
-                    arquivo = self.resultado["arquivo"]
+                    self.audios[hash(dados["arquivo"])] = dados["arquivo"]
+                    arquivo = dados["arquivo"]
                     buffer = io.BytesIO()
                     blob = arquivo
 
@@ -89,15 +89,28 @@ class TelaInicial(Screen):
                         blob = buffer.getvalue()
 
                     self.mensagens.append(
-                        {"autor": self.nome_user, "audio": blob, "id": hash(self.resultado["arquivo"])})
-                    self.query_one(TextArea).mount(Static(self.nome_user), ProgressBar(name=hash(self.resultado["arquivo"])))
+                        {"autor": self.nome_user, "audio": blob, "id": hash(dados["arquivo"])})
+                    self.query_one(TextArea).mount(
+                        Static(self.nome_user), ProgressBar(name=hash(dados["arquivo"])))
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
 
                 case "video":
 
                     nome = Static(self.nome_user)
-                    blob = self.resultado["arquivo"].read()
+                    if dados["arquivo"] == None:
+                        self.query_one(TextArea).mount(
+                        nome, Video.Video(dados["_temp_path"]))
+
+                        self.videos[hash(dados["arquivo"])] = blob
+                        self.mensagens.append(
+                            {"autor": self.nome_user, "video": blob, "id": hash(dados["arquivo"])})
+                        Banco.salvar("banco.db", "mensagens",
+                                    self.mensagens)
+                        
+                        return
+                    
+                    blob = dados["arquivo"].read()
 
                     if blob[:4] == b'RIFF':
                         sufixo = ".avi"
@@ -115,76 +128,52 @@ class TelaInicial(Screen):
                         tmp_path = tmp.name
 
                     self.query_one(TextArea).mount(
-                        nome, (Video.Video(tmp_path)))
+                        nome, Video.Video(tmp_path))
 
-                    self.videos[hash(self.resultado["arquivo"])] = blob
+                    self.videos[hash(dados["arquivo"])] = blob
                     self.mensagens.append(
-                        {"autor": self.nome_user, "video": blob, "id": hash(self.resultado["arquivo"])})
+                        {"autor": self.nome_user, "video": blob, "id": hash(dados["arquivo"])})
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
 
                 case "documento":
+                    self.query_one(TextArea).mount(Static(self.nome_user), Static(dados["nome"], name=hash(dados["arquivo"])))
                     self.documentos[hash(
-                        self.resultado["arquivo"])] = self.resultado["arquivo"]
+                        dados["arquivo"])] = dados["arquivo"]
                     self.mensagens.append(
-                        {"autor": self.nome_user, "documento": self.resultado["arquivo"], "id": hash(self.resultado["arquivo"])})
+                        {"autor": self.nome_user, "documento": dados["arquivo"], "id": hash(dados["arquivo"])})
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
 
     # def make_progress(self) -> None:
     #     self.query_one(ProgressBar).advance(1)
 
-    async def on_click(self, evento: Click):
-        if isinstance(evento.widget, Static):
-            if "▶︎" in evento.widget.content:
-                arquivo = self.audios[evento.widget.name]
-                self.audio.tocar_audio(arquivo)
-            if evento.widget.id == "selecionar_arquivo":
-                await self.mount(TelaSelecionar.TelaSelecionar())
-
-    async def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "gravar":
-            if not self.audio.is_recording:
-                self.query_one(Button).label = "⬛"
-                self.query_one(Input).disabled = True
-                self.query_one(Input).value = "▶• Recording..."
-                self.audio.start_recording()
-            else:
-                self.query_one(Button).label = "🔴"
-                self.query_one(Input).disabled = False
-                self.query_one(Input).value = ""
-                self.audio.stop_recording()
-                arquivo = wave.open("mensagem.wav", "rb")
-                buffer = io.BytesIO()
-                with wave.open(buffer, "wb") as wf:
-                    wf.setnchannels(arquivo.getnchannels())
-                    wf.setsampwidth(arquivo.getsampwidth())
-                    wf.setframerate(arquivo.getframerate())
-                    wf.writeframes(arquivo.readframes(
-                        arquivo.getnframes()))
-                blob = buffer.getvalue()
-                nova_mensagem = Static(
-                    f"{self.nome_user}\n  ▶︎ •၊၊||၊|။||||။‌‌‌‌‌၊|• \n", name=hash(arquivo))
-                self.audios[nova_mensagem.name] = arquivo
-                self.mensagens.append(
-                    {"autor": self.nome_user, "mensagem": "▶︎ •၊၊||၊|။||||။‌‌‌‌‌၊|• ", "audio": blob, "id": hash(arquivo)})
-                self.query_one(TextArea).mount(nova_mensagem)
-                Banco.salvar("banco.db", "mensagens",
-                             self.mensagens)
-
-        # elif event.button.id == "play":
-        #     self.audio.play_audio()
-
     def on_key(self, event: Key):
         if event.key == "enter" and self.nome_user:
             input_widget = self.query_one(Input)
-            nova_mensagem = Static(
-                f"{self.nome_user}\n  {str(input_widget.value)}\n")
-            self.mensagens.append(
-                {"autor": self.nome_user, "mensagem": str(input_widget.value)})
-            Banco.salvar("banco.db", "mensagens", self.mensagens)
-            self.query_one(TextArea).mount(nova_mensagem)
-            input_widget.clear()
+            if "http" in input_widget.value or "https" in input_widget.value:
+                try:
+                    dados = Download.baixar_para_memoria_ou_temp(
+                        input_widget.value)
+                    self.exibir_midia(dados)
+                except:
+                    self.notify("Erro com Midia")
+            else:
+                nova_mensagem = Static(
+                    f"{self.nome_user}\n  {str(input_widget.value)}\n")
+                self.mensagens.append(
+                    {"autor": self.nome_user, "mensagem": str(input_widget.value)})
+                Banco.salvar("banco.db", "mensagens", self.mensagens)
+                self.query_one(TextArea).mount(nova_mensagem)
+                input_widget.clear()
+
+    async def on_click(self, evento: Click):
+        if isinstance(evento.widget, ProgressBar):
+                arquivo = self.audios[evento.widget.name]
+                self.audio.tocar_audio(arquivo)
+        if isinstance(evento.widget, Static):
+            documento = self.documentos[evento.widget.name]
+            # TODO: abrir documento, ou abrir foto dele 
 
     def on_mount(self):
         users = self.listar_usuarios()
@@ -192,8 +181,6 @@ class TelaInicial(Screen):
         self.poll_dados()
 
         self._poll_timer = self.set_interval(2, self.poll_dados)
-
-    montou_notificacao = False
 
     def poll_dados(self):
         if self.nome_user != "":
@@ -258,7 +245,7 @@ class TelaInicial(Screen):
                         if not encontrado:
                             self.query_one(TextArea).mount(stt, bar)
 
-                    elif "video":
+                    elif "video" in mensagem.keys():
                         nome = Static(mensagem["autor"])
                         blob = mensagem["video"]
                         if blob[:4] == b'RIFF':
@@ -285,7 +272,7 @@ class TelaInicial(Screen):
                             self.query_one(TextArea).mount(nome, stt)
                         pass
 
-                    elif "documento":
+                    elif "documento" in mensagem.keys():
                         self.documentos[mensagem["id"]] = mensagem["documento"]
 
                     else:
