@@ -7,11 +7,12 @@ from textual.timer import Timer
 from textual.events import Click
 from database import Banco
 import time
-from model import Audio, Video, Imagem
+from model import Audio, Imagem
 import wave
 from view import TelaSelecionar
 from pydub import AudioSegment
 import io
+from view.widgets import Video
 
 class TelaInicial(Screen):
     CSS_PATH = "css/TelaInicial.tcss"
