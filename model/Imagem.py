@@ -33,7 +33,17 @@ class Imagem:
             return None
         return im
 
-    def resizeComTamanho(selfm, caminho, widht, height):
+    def resize_imagem_com_tamanho(self, imagem, tamanho):
+        size = tamanho, tamanho
+
+        try:
+            im = Image.open(imagem)
+            im.thumbnail(size, Image.Resampling.LANCZOS)
+        except ValueError:
+            return None
+        return im
+
+    def resize_com_tamanho(self, caminho, widht, height):
 
         if not os.path.exists(caminho):
             print(f"Imagem não encontrada: {caminho}")

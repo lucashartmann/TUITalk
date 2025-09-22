@@ -6,13 +6,6 @@ import wave
 from pydub import AudioSegment
 import yt_dlp
 
-import requests
-import io
-import os
-import wave
-import tempfile
-from pydub import AudioSegment
-
 
 def baixar_para_memoria_ou_temp(url: str):
     if "youtube" in url or "yotu.be" in url:

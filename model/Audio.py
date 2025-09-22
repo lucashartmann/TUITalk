@@ -2,7 +2,6 @@ import sounddevice as sd
 import wave
 import numpy as np
 from pydub import AudioSegment
-import os
 
 
 class ChatVoz:
@@ -38,13 +37,12 @@ class ChatVoz:
             wf.setframerate(self.fs)
             wf.writeframes((audio * 32767).astype(np.int16).tobytes())
 
-
     def tocar_audio(self, audio_segment):
         if self.is_playing:
             sd.stop()
             self.is_playing = False
             return
-        
+
         if isinstance(audio_segment, AudioSegment):
             samples = np.array(audio_segment.get_array_of_samples())
             if audio_segment.channels == 2:
@@ -57,6 +55,3 @@ class ChatVoz:
             audio = np.frombuffer(data, dtype=np.int16)
             sd.play(audio, samplerate=audio_segment.getframerate())
             self.is_playing = True
-
-
-       
