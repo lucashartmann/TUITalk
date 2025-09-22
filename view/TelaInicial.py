@@ -4,7 +4,7 @@ import wave
 import io
 
 from textual.screen import Screen
-from textual.widgets import Input, TextArea, Static, ListItem, ListView, Header, Footer, ProgressBar, Button
+from textual.widgets import Input, Static, ListItem, ListView, Header, Footer, ProgressBar, Button
 from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup, Container
 from textual.events import Key
 from textual.timer import Timer
@@ -37,7 +37,7 @@ class TelaInicial(Screen):
         yield Header()
         with HorizontalScroll():
             with VerticalScroll():
-                yield TextArea(read_only=True)
+                yield VerticalScroll(id="vs_mensagens")
                 with HorizontalGroup():
                     yield Input(placeholder="Digite aqui")
             yield ListView(id="lv_usuarios")
@@ -45,6 +45,10 @@ class TelaInicial(Screen):
 
     def exibir_midia(self, dados):
         if dados:
+
+            nome_user_static = Static(self.usuario.get_nome())
+            if self.usuario.get_cor():
+                nome_user_static.styles.color = self.usuario.get_cor()
 
             match dados["tipo"]:
 
@@ -55,11 +59,10 @@ class TelaInicial(Screen):
                         pixel = self.obj_imagem.gerar_pixel(
                             imagem_gerada)
                         if pixel:
-                            nome = Static(self.usuario.get_nome())
                             imagem_static = Static(
                                 pixel, name=hash(pixel))
-                            self.query_one(TextArea).mount(
-                                nome, imagem_static)
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                nome_user_static, imagem_static)
                             self.mensagens.append(
                                 {"autor": self.usuario.get_nome(), "pixel": pixel, "id": hash(pixel)})
                             Banco.salvar("banco.db", "mensagens",
@@ -92,25 +95,12 @@ class TelaInicial(Screen):
 
                     self.mensagens.append(
                         {"autor": self.usuario.get_nome(), "audio": blob, "id": hash(dados["arquivo"])})
-                    self.query_one(TextArea).mount(
-                        Static(self.usuario.get_nome()), ProgressBar(name=hash(dados["arquivo"])))
+                    self.query_one("#vs_mensagens", VerticalScroll).mount(
+                        nome_user_static, ProgressBar(name=hash(dados["arquivo"])))
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
 
                 case "video":
-
-                    nome = Static(self.usuario.get_nome())
-                    if dados["arquivo"] == None:
-                        self.query_one(TextArea).mount(
-                            nome, Video.Video(dados["_temp_path"]))
-
-                        self.videos[hash(dados["arquivo"])] = blob
-                        self.mensagens.append(
-                            {"autor": self.usuario.get_nome(), "video": blob, "id": hash(dados["arquivo"])})
-                        Banco.salvar("banco.db", "mensagens",
-                                     self.mensagens)
-
-                        return
 
                     blob = dados["arquivo"].read()
 
@@ -129,8 +119,8 @@ class TelaInicial(Screen):
                         tmp.write(blob)
                         tmp_path = tmp.name
 
-                    self.query_one(TextArea).mount(
-                        nome, Video.Video(tmp_path))
+                    self.query_one("#vs_mensagens", VerticalScroll).mount(
+                        nome_user_static, Video.Video(tmp_path))
 
                     self.videos[hash(dados["arquivo"])] = blob
                     self.mensagens.append(
@@ -139,7 +129,7 @@ class TelaInicial(Screen):
                                  self.mensagens)
 
                 case "documento":
-                    self.query_one(TextArea).mount(Static(self.usuario.get_nome()), Static(
+                    self.query_one("#vs_mensagens", VerticalScroll).mount(nome_user_static, Static(
                         dados["nome"], name=hash(dados["arquivo"])))
                     self.documentos[hash(
                         dados["arquivo"])] = dados["arquivo"]
@@ -154,6 +144,7 @@ class TelaInicial(Screen):
     def on_key(self, event: Key):
         if event.key == "enter" and self.usuario.get_nome():
             input_widget = self.query_one(Input)
+
             if self.montou_container_foto:
                 try:
                     dados = Download.baixar_para_memoria_ou_temp(
@@ -171,7 +162,6 @@ class TelaInicial(Screen):
                             self.usuario.set_pixel_perfil(pixel)
                             self.users[self.usuario.get_nome()] = self.usuario
                             Banco.salvar("banco.db", "usuarios", self.users)
-                            
                 except:
                     self.notify("ERRO!")
 
@@ -182,17 +172,22 @@ class TelaInicial(Screen):
                     self.exibir_midia(dados)
                 except:
                     self.notify("Erro com Midia")
+
             else:
-                nova_mensagem = Static(
-                    f"{self.usuario.get_nome()}\n  {str(input_widget.value)}\n")
+                self.notify(self.usuario.get_cor())
+                nome_user_static = Static(self.usuario.get_nome())
+                if self.usuario.get_cor():
+                    nome_user_static.styles.color = self.usuario.get_cor()
+                nova_mensagem = Static(str(input_widget.value))
                 self.mensagens.append(
                     {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.value)})
                 Banco.salvar("banco.db", "mensagens", self.mensagens)
-                self.query_one(TextArea).mount(nova_mensagem)
+                self.query_one("#vs_mensagens", VerticalScroll).mount(
+                    nome_user_static, nova_mensagem)
                 input_widget.clear()
 
     async def on_click(self, evento: Click):
-        
+
         if str(evento.widget) == "HeaderTitle()":
             if self.montou_container_foto:
                 container = self.get_child_by_id("container_foto")
@@ -239,24 +234,31 @@ class TelaInicial(Screen):
                 self.atualizar_lista_users(users)
 
             carregar_msgs = Banco.carregar("banco.db", "mensagens")
+
             if carregar_msgs:
                 self.mensagens = carregar_msgs
                 encontrado = False
+
                 for mensagem in self.mensagens:
 
+                    stt_nome_autor = Static(mensagem["autor"])
+                    if self.users[mensagem["autor"]].get_cor():
+                        stt_nome_autor.styles.color = self.users[mensagem["autor"]].get_cor(
+                        )
+
                     if "pixel" in mensagem.keys():
-                        nome = Static(mensagem["autor"])
+
                         imagem_static = Static(
                             mensagem["pixel"], name=mensagem["id"])
-                        for stt in self.query_one(TextArea).query(Static):
+                        for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Static):
                             if stt.name == imagem_static.name:
                                 encontrado = True
                                 break
                         if not encontrado:
-                            self.query_one(TextArea).mount(nome, imagem_static)
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                stt_nome_autor, imagem_static)
 
                     elif "audio" in mensagem.keys():
-                        stt = Static(mensagem["autor"])
                         bar = ProgressBar(name=mensagem["id"])
 
                         buffer = mensagem["audio"]
@@ -283,15 +285,15 @@ class TelaInicial(Screen):
 
                         self.audios[mensagem["id"]] = audio
 
-                        for progressbar_exibidas in self.query_one(TextArea).query(ProgressBar):
+                        for progressbar_exibidas in self.query_one("#vs_mensagens", VerticalScroll).query(ProgressBar):
                             if progressbar_exibidas.name == bar.name:
                                 encontrado = True
                                 break
                         if not encontrado:
-                            self.query_one(TextArea).mount(stt, bar)
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                stt_nome_autor, bar)
 
                     elif "video" in mensagem.keys():
-                        nome = Static(mensagem["autor"])
                         blob = mensagem["video"]
                         if blob[:4] == b'RIFF':
                             sufixo = ".avi"
@@ -309,26 +311,36 @@ class TelaInicial(Screen):
                         stt = Static((Video.Video(tmp_path)),
                                      name=mensagem["id"])
                         self.videos[mensagem["id"]] = blob
-                        for stt_exibido in self.query_one(TextArea).query(Static):
+                        for stt_exibido in self.query_one("#vs_mensagens", VerticalScroll).query(Static):
                             if stt.name == stt.name:
                                 encontrado = True
                                 break
                         if not encontrado:
-                            self.query_one(TextArea).mount(nome, stt)
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                stt_nome_autor, stt)
                         pass
 
                     elif "documento" in mensagem.keys():
                         self.documentos[mensagem["id"]] = mensagem["documento"]
 
                     else:
-                        stt = Static(
-                            f"{mensagem["autor"]}\n  {mensagem["mensagem"]}\n")
-                        for stt_exibido in self.query_one(TextArea).query(Static):
-                            if stt.content == stt_exibido.content:
-                                encontrado = True
-                                break
+                        mensagem = Static(mensagem["mensagem"])
+                        lista = list(self.query_one(
+                            "#vs_mensagens", VerticalScroll).query(Static))
+                        encontrado = False
+
+                        for stt_exibido in lista:
+                            if stt_exibido.content.strip() == stt_nome_autor.content.strip():
+                                index = lista.index(stt_exibido)
+                                if index + 1 < len(lista):
+                                    depois = lista[index + 1]
+                                    if depois.content.strip() == mensagem.content.strip():
+                                        encontrado = True
+                                        break
+
                         if not encontrado:
-                            self.query_one(TextArea).mount(stt)
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                stt_nome_autor, mensagem)
 
     def listar_usuarios(self):
         if self.usuario.get_nome() != "":
@@ -337,9 +349,9 @@ class TelaInicial(Screen):
             ativos = {}
             for chave, valor in usuarios.items():
                 if agora - valor.get_tempo() <= 60:
-                        ativos[f"👤 🟢 {chave}"] = valor
+                    ativos[f"👤 🟢 {chave}"] = valor
                 else:
-                        ativos[f"👤 🔴 {chave}"] = valor
+                    ativos[f"👤 🔴 {chave}"] = valor
             return ativos
 
     def atualizar_usuario(self):
@@ -354,11 +366,14 @@ class TelaInicial(Screen):
         lista.remove_children()
         if users:
             for chave, user in users.items():
-                if user.get_pixel_perfil():   
+                nome_user = Static(chave)
+                if user.get_cor():
+                    nome_user.styles.color = user.get_cor()
+
+                if user.get_pixel_perfil():
                     lst_item = ListItem()
                     lst_item.styles.layout = "horizontal"
                     lista.append(lst_item)
-                    lst_item.mount(Static(user.get_pixel_perfil()), Static(chave))
+                    lst_item.mount(Static(user.get_pixel_perfil()), nome_user)
                 else:
-                    lista.append(ListItem(Static(chave)))
-
+                    lista.append(ListItem(nome_user))

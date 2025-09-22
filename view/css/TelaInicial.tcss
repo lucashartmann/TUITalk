@@ -9,8 +9,13 @@ TelaInicial {
     margin-left: 2;
 }
 
-TextArea {
+#vs_mensagens {
+    background: rgba(163, 123, 67, 1);
     margin: 2;
+}
+
+#vs_mensagens Static {
+    margin-left: 2;
 }
 
 Input {
