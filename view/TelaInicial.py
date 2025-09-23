@@ -9,9 +9,6 @@ from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup
 from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
-from textual.color import Color
-
-from rich_pixels import Pixels
 
 from database import Banco
 from model import Audio, Imagem, Download, Usuario
@@ -105,23 +102,8 @@ class TelaInicial(Screen):
 
                     blob = dados["arquivo"].read()
 
-                    if blob[:4] == b'RIFF':
-                        sufixo = ".avi"
-                    elif blob[4:8] == b'ftyp':
-                        sufixo = ".mp4"
-                    elif blob[:4] == b'\x1A\x45\xDF\xA3':
-                        sufixo = ".mkv"
-                    elif blob[:4] == b'OggS':
-                        sufixo = ".ogv"
-                    else:
-                        return
-
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=sufixo) as tmp:
-                        tmp.write(blob)
-                        tmp_path = tmp.name
-
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
-                        nome_user_static, Video.Video(tmp_path))
+                        nome_user_static, Video.Video(dados["_temp_path"]))
 
                     self.videos[hash(dados["arquivo"])] = blob
                     self.mensagens.append(
@@ -150,19 +132,20 @@ class TelaInicial(Screen):
                 try:
                     dados = Download.baixar_para_memoria_ou_temp(
                         input_widget.value)
-                    imagem_gerada = self.obj_imagem.resize_imagem_com_tamanho(
-                        dados["arquivo"], 5)
-                    if imagem_gerada:
-                        pixel = self.obj_imagem.gerar_pixel(
-                            imagem_gerada)
-                        if pixel:
-                            imagem_static = Static(
-                                pixel)
-                            container = self.get_child_by_id("container_foto")
-                            container.mount(imagem_static, before=0)
-                            self.usuario.set_pixel_perfil(pixel)
-                            self.users[self.usuario.get_nome()] = self.usuario
-                            Banco.salvar("banco.db", "usuarios", self.users)
+                    if dados:
+                        imagem_gerada = self.obj_imagem.resize_imagem_com_tamanho(
+                            dados["arquivo"], 5)
+                        if imagem_gerada:
+                            pixel = self.obj_imagem.gerar_pixel(
+                                imagem_gerada)
+                            if pixel:
+                                imagem_static = Static(
+                                    pixel)
+                                container = self.get_child_by_id("container_foto")
+                                container.mount(imagem_static, before=0)
+                                self.usuario.set_pixel_perfil(pixel)
+                                self.users[self.usuario.get_nome()] = self.usuario
+                                Banco.salvar("banco.db", "usuarios", self.users)
                 except:
                     self.notify("ERRO!")
 
@@ -170,10 +153,12 @@ class TelaInicial(Screen):
                 try:
                     dados = Download.baixar_para_memoria_ou_temp(
                         input_widget.value)
-                    self.exibir_midia(dados)
-                except:
-                    self.notify("Erro com Midia")
-
+                    if dados:
+                        self.exibir_midia(dados)
+                    else:
+                        raise Exception
+                except Exception as e:
+                    self.notify(f"Erro com Midia. {e}")
             else:
                 nome_user_static = Static(self.usuario.get_nome())
                 if self.usuario.get_cor():

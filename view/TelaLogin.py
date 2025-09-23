@@ -1,5 +1,6 @@
 from textual.screen import Screen
 from textual.widgets import Input, Static,  Button, Header, Footer
+from textual.color import Color
 from database import Banco
 from view.TelaInicial import TelaInicial
 import time
@@ -25,7 +26,22 @@ class TelaLogin(Screen):
         carregar_users = Banco.carregar("banco.db", "usuarios") or {}
         TelaInicial.users = carregar_users
         nome_input = self.query_one("#usuario", Input).value.strip()
+        
         cor = unidecode(self.query_one("#cor", Input).value.strip().lower())
+        
+        if cor:
+            if carregar_users and cor:
+                for user in carregar_users.values:
+                    if user.get_cor() == cor:
+                        self.notify("ERRO! Cor já escolhida")
+                        return
+
+        if cor:
+            try:
+                Color.parse(cor)
+            except Exception:
+                self.notify("ERRO! Cor inválida")
+                return     
 
         if not nome_input:
             self.notify("ERRO! Valor inválido")

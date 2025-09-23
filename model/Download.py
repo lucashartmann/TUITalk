@@ -9,7 +9,7 @@ import yt_dlp
 
 def baixar_para_memoria_ou_temp(url: str):
     if "youtube" in url or "yotu.be" in url:
-        baixar_youtube(url)
+        return baixar_youtube(url)
 
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     s = requests.Session()
