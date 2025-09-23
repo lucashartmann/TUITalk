@@ -4,11 +4,12 @@ import wave
 import io
 
 from textual.screen import Screen
-from textual.widgets import Input, Static, ListItem, ListView, Header, Footer, ProgressBar, Button
+from textual.widgets import Input, Static, ListItem, ListView, Header, Footer, ProgressBar
 from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup, Container
 from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
+from textual.color import Color
 
 from rich_pixels import Pixels
 
@@ -174,11 +175,10 @@ class TelaInicial(Screen):
                     self.notify("Erro com Midia")
 
             else:
-                self.notify(self.usuario.get_cor())
                 nome_user_static = Static(self.usuario.get_nome())
                 if self.usuario.get_cor():
-                    nome_user_static.styles.color = self.usuario.get_cor()
-                nova_mensagem = Static(str(input_widget.value))
+                    nome_user_static.styles.color = f"{self.usuario.get_cor()} 100%"
+                nova_mensagem = Static(f"  {str(input_widget.value)}")
                 self.mensagens.append(
                     {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.value)})
                 Banco.salvar("banco.db", "mensagens", self.mensagens)
