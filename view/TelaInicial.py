@@ -7,7 +7,7 @@ from textual.timer import Timer
 from textual.events import Click
 from database import Banco
 import time
-from model import Audio, Video, Imagem
+from model import Audio, Imagem
 import wave
 from view import TelaSelecionar
 from pydub import AudioSegment
@@ -15,7 +15,7 @@ import io
 from PIL import Image
 from rich_pixels import Pixels
 
-from view.widgets import ChamadaVideo
+from view.widgets import ChamadaVideo, Video
 
 
 class TelaInicial(Screen):
