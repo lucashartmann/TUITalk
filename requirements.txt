@@ -1,0 +1,12 @@
+textual
+rich
+opencv-python
+numpy
+pillow
+sounddevice
+pydub
+textual-serve
+rich-pixels
+ngrok
+
+# pip install -r requirements.txt

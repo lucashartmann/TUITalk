@@ -362,3 +362,5 @@ class TelaInicial(Screen):
                     lst_item.mount(Static(user.get_pixel_perfil()), nome_user)
                 else:
                     lista.append(ListItem(nome_user))
+
+

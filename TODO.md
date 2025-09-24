@@ -14,3 +14,8 @@
 - Usar objeto Usuario ?
 - Chamadas de video
 - Grupos
+
+
+### view/TelaServidor
+
+- Fazer um site e hospedar no vercel que irá dizer "servidor desligado..." e quando ligar o servidor na TelaServidor o site vai redirecionar para o site que está o textual serve  

@@ -1,6 +1,7 @@
 from textual.screen import Screen
 from textual.widgets import Input, Static,  Button, Header, Footer
 from textual.color import Color
+from textual.app import App
 from database import Banco
 from view.TelaInicial import TelaInicial
 import time
@@ -72,3 +73,5 @@ class TelaLogin(Screen):
         Banco.salvar("banco.db", "usuarios", TelaInicial.users)
 
         self.app.switch_screen("tela_inicial")
+
+
