@@ -11,6 +11,7 @@ class Video(Static):
         self.width = width
         self.height = height
 
+
     def on_mount(self) -> None:
         self.set_interval(1 / 15, self.update_frame)
 

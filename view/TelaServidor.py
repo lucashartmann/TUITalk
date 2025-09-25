@@ -26,15 +26,9 @@ class TelaServidor(Screen):
 
     async def on_switch_changed(self, evento: Switch.Changed):
         if evento.value == True:
-            try:
-                token = Banco.carregar(
-                    "banco.db", "chave_ngrok") or self.query_one(Input).value
-                try:
-                    ngrok.set_auth_token(token)
-                    Banco.salvar("banco.db", "chave_ngrok", token)
-                except Exception as e:
-                    self.query_one(Pretty).update(f"ngrok error: {e}")
-                    return
+                token = self.query_one(Input).value
+                ngrok.set_auth_token(token)
+                Banco.salvar("banco.db", "chave_ngrok", token)
 
                 self.listener = await ngrok.forward(8000, authtoken_from_env=False)
                 self.query_one(Pretty).update(self.listener.url())
@@ -52,8 +46,7 @@ class TelaServidor(Screen):
                     json={"url": self.listener.url()}
                 )
 
-            except Exception as e:
-                self.notify(f"Erro: {e}")
+            
         else:
             self.listener.close()
             for p in psutil.process_iter(['pid', 'name', 'cmdline']):

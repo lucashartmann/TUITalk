@@ -9,6 +9,7 @@ from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup
 from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
+from rich_pixels import Pixels
 
 from database import Banco
 from model import Audio, Imagem, Download, Usuario
@@ -100,14 +101,12 @@ class TelaInicial(Screen):
 
                 case "video":
 
-                    blob = dados["arquivo"].read()
-
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
                         nome_user_static, Video.Video(dados["_temp_path"]))
 
-                    self.videos[hash(dados["arquivo"])] = blob
+                    self.videos[hash(dados["arquivo"])] = dados["_temp_path"]
                     self.mensagens.append(
-                        {"autor": self.usuario.get_nome(), "video": blob, "id": hash(dados["arquivo"])})
+                        {"autor": self.usuario.get_nome(), "video": dados["_temp_path"], "id": hash(dados["arquivo"])})
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
 
@@ -279,32 +278,15 @@ class TelaInicial(Screen):
                                 stt_nome_autor, bar)
 
                     elif "video" in mensagem.keys():
-                        blob = mensagem["video"]
-                        if blob[:4] == b'RIFF':
-                            sufixo = ".avi"
-                        elif blob[4:8] == b'ftyp':
-                            sufixo = ".mp4"
-                        elif blob[:4] == b'\x1A\x45\xDF\xA3':
-                            sufixo = ".mkv"
-                        elif blob[:4] == b'OggS':
-                            sufixo = ".ogv"
-                        else:
-                            return
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=sufixo) as tmp:
-                            tmp.write(blob)
-                            tmp_path = tmp.name
-                        stt = Static((Video.Video(tmp_path)),
-                                     name=mensagem["id"])
-                        self.videos[mensagem["id"]] = blob
-                        for stt_exibido in self.query_one("#vs_mensagens", VerticalScroll).query(Static):
-                            if stt.name == stt.name:
-                                encontrado = True
-                                break
-                        if not encontrado:
-                            self.query_one("#vs_mensagens", VerticalScroll).mount(
-                                stt_nome_autor, stt)
-                        pass
+                        stt = Video.Video(mensagem["video"])
 
+                        if mensagem["id"] not in self.videos.keys() and mensagem["video"]:
+
+                            self.videos[mensagem["id"]] = mensagem["video"]
+                        
+                        self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                stt_nome_autor, stt)
+                        
                     elif "documento" in mensagem.keys():
                         self.documentos[mensagem["id"]] = mensagem["documento"]
 
@@ -315,13 +297,21 @@ class TelaInicial(Screen):
                         encontrado = False
 
                         for stt_exibido in lista:
-                            if stt_exibido.content.strip() == stt_nome_autor.content.strip():
-                                index = lista.index(stt_exibido)
-                                if index + 1 < len(lista):
-                                    depois = lista[index + 1]
-                                    if depois.content.strip() == mensagem.content.strip():
-                                        encontrado = True
-                                        break
+                            if not isinstance(stt_exibido.content, Pixels):
+                                content = stt_exibido.content
+                                if hasattr(content, 'strip'):
+                                    stt_exibido_conteudo = content.strip()
+                                else:
+                                    return
+                                if not isinstance(stt_exibido.content, Pixels):
+                                    stt_nome_autor_conteudo = stt_nome_autor.content.strip()
+                                if stt_exibido_conteudo == stt_nome_autor_conteudo:
+                                    index = lista.index(stt_exibido)
+                                    if index + 1 < len(lista):
+                                        depois = lista[index + 1]
+                                        if depois.content.strip() == mensagem.content.strip():
+                                            encontrado = True
+                                            break
 
                         if not encontrado:
                             self.query_one("#vs_mensagens", VerticalScroll).mount(
@@ -333,16 +323,21 @@ class TelaInicial(Screen):
             usuarios = Banco.carregar("banco.db", "usuarios") or {}
             ativos = {}
             for chave, valor in usuarios.items():
-                if agora - valor.get_tempo() <= 60:
-                    ativos[f"👤 🟢 {chave}"] = valor
-                else:
-                    ativos[f"👤 🔴 {chave}"] = valor
+                    if valor:
+                        if agora - valor.get_tempo() <= 60:
+                            ativos[f"👤 🟢 {chave}"] = valor
+                        else:
+                            ativos[f"👤 🔴 {chave}"] = valor
             return ativos
 
     def atualizar_usuario(self):
         agora = int(time.time())
-        usuarios = Banco.carregar("banco.db", "usuarios") or {}
-        usuarios[self.usuario.get_nome()].set_tempo(agora)
+        usuarios = Banco.carregar("banco.db", "usuarios")
+        if self.usuario.get_nome() in usuarios.keys():
+                usuarios[self.usuario.get_nome()].set_tempo(agora)
+        else:
+                self.usuario.set_tempo(agora)
+                usuarios[self.usuario.get_nome()] = self.usuario
         Banco.salvar("banco.db", "usuarios", usuarios)
         self.users = self.listar_usuarios()
 

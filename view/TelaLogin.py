@@ -32,7 +32,7 @@ class TelaLogin(Screen):
         
         if cor:
             if carregar_users and cor:
-                for user in carregar_users.values:
+                for user in carregar_users.values():
                     if user.get_cor() == cor:
                         self.notify("ERRO! Cor já escolhida")
                         return
@@ -50,8 +50,8 @@ class TelaLogin(Screen):
 
         agora = int(time.time())
 
-        if nome_input in TelaInicial.users:
-            last_seen = TelaInicial.users[nome_input]
+        if nome_input in TelaInicial.users.keys():
+            last_seen = TelaInicial.users[nome_input].get_tempo()
 
             if agora - last_seen <= 60:
                 self.notify("ERRO! Nome já em uso")
