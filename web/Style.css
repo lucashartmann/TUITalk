@@ -8,7 +8,7 @@ body {
 }
 
 
-div {
+#status {
     background-color: yellow;
     border: solid red;
     width: 50%;

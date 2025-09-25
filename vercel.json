@@ -1,0 +1,28 @@
+{
+  "functions": {
+    "api/url.js": {
+      "maxDuration": 10
+    },
+    "api/set-url.js": {
+      "maxDuration": 10
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/",
+      "destination": "/web/index.html"
+    },
+    {
+      "source": "/Style.css",
+      "destination": "/web/Style.css"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/web/$1"
+    }
+  ]
+}

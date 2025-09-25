@@ -27,9 +27,9 @@ class TelaLogin(Screen):
         carregar_users = Banco.carregar("banco.db", "usuarios") or {}
         TelaInicial.users = carregar_users
         nome_input = self.query_one("#usuario", Input).value.strip()
-        
+
         cor = unidecode(self.query_one("#cor", Input).value.strip().lower())
-        
+
         if cor:
             if carregar_users and cor:
                 for user in carregar_users.values():
@@ -42,7 +42,7 @@ class TelaLogin(Screen):
                 Color.parse(cor)
             except Exception:
                 self.notify("ERRO! Cor inválida")
-                return     
+                return
 
         if not nome_input:
             self.notify("ERRO! Valor inválido")
@@ -73,5 +73,3 @@ class TelaLogin(Screen):
         Banco.salvar("banco.db", "usuarios", TelaInicial.users)
 
         self.app.switch_screen("tela_inicial")
-
-

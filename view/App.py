@@ -9,7 +9,7 @@ class App(App):
         "tela_inicial": TelaInicial.TelaInicial,
         "tela_servidor": TelaServidor.TelaServidor
     }
-    
+
     tela = "tela_servidor"
 
     def on_mount(self):

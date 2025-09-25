@@ -140,11 +140,14 @@ class TelaInicial(Screen):
                             if pixel:
                                 imagem_static = Static(
                                     pixel)
-                                container = self.get_child_by_id("container_foto")
+                                container = self.get_child_by_id(
+                                    "container_foto")
                                 container.mount(imagem_static, before=0)
                                 self.usuario.set_pixel_perfil(pixel)
-                                self.users[self.usuario.get_nome()] = self.usuario
-                                Banco.salvar("banco.db", "usuarios", self.users)
+                                self.users[self.usuario.get_nome()
+                                           ] = self.usuario
+                                Banco.salvar(
+                                    "banco.db", "usuarios", self.users)
                 except:
                     self.notify("ERRO!")
 
@@ -280,13 +283,13 @@ class TelaInicial(Screen):
                     elif "video" in mensagem.keys():
                         stt = Video.Video(mensagem["video"])
 
-                        if mensagem["id"] not in self.videos.keys() and mensagem["video"]:
+                        if mensagem["id"] not in self.videos.keys():
 
                             self.videos[mensagem["id"]] = mensagem["video"]
-                        
-                        self.query_one("#vs_mensagens", VerticalScroll).mount(
+
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
                                 stt_nome_autor, stt)
-                        
+
                     elif "documento" in mensagem.keys():
                         self.documentos[mensagem["id"]] = mensagem["documento"]
 
@@ -323,21 +326,21 @@ class TelaInicial(Screen):
             usuarios = Banco.carregar("banco.db", "usuarios") or {}
             ativos = {}
             for chave, valor in usuarios.items():
-                    if valor:
-                        if agora - valor.get_tempo() <= 60:
-                            ativos[f"👤 🟢 {chave}"] = valor
-                        else:
-                            ativos[f"👤 🔴 {chave}"] = valor
+                if valor:
+                    if agora - valor.get_tempo() <= 60:
+                        ativos[f"👤 🟢 {chave}"] = valor
+                    else:
+                        ativos[f"👤 🔴 {chave}"] = valor
             return ativos
 
     def atualizar_usuario(self):
         agora = int(time.time())
         usuarios = Banco.carregar("banco.db", "usuarios")
         if self.usuario.get_nome() in usuarios.keys():
-                usuarios[self.usuario.get_nome()].set_tempo(agora)
+            usuarios[self.usuario.get_nome()].set_tempo(agora)
         else:
-                self.usuario.set_tempo(agora)
-                usuarios[self.usuario.get_nome()] = self.usuario
+            self.usuario.set_tempo(agora)
+            usuarios[self.usuario.get_nome()] = self.usuario
         Banco.salvar("banco.db", "usuarios", usuarios)
         self.users = self.listar_usuarios()
 
@@ -357,5 +360,3 @@ class TelaInicial(Screen):
                     lst_item.mount(Static(user.get_pixel_perfil()), nome_user)
                 else:
                     lista.append(ListItem(nome_user))
-
-
