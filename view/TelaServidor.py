@@ -11,7 +11,7 @@ from textual.widgets import Switch, Static, Pretty, Input
 
 from database import Banco
 
-from web.api import index
+from api import index
 
 class TelaServidor(Screen):
 
@@ -50,7 +50,11 @@ class TelaServidor(Screen):
                     shell=True
                 )
                 
-                requests.post("https://seu-flask-na-vercel.vercel.app/set_redirect", json={"url": self.listener.url()})
+                requests.post(
+                    "https://textual-message-3z7178tgw-lucashartmanns-projects.vercel.app/api/index/set_redirect",
+                    json={"url": self.listener.url()}
+                )
+
             
             except Exception as e:
                 self.notify(f"Erro: {e}")
