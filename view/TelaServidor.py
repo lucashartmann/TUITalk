@@ -1,7 +1,7 @@
 import os
 import subprocess
 import psutil
-import Main
+import requests
 
 from ngrok import ngrok
 
@@ -11,6 +11,7 @@ from textual.widgets import Switch, Static, Pretty, Input
 
 from database import Banco
 
+from web.api import Flesk
 
 class TelaServidor(Screen):
 
@@ -40,7 +41,6 @@ class TelaServidor(Screen):
 
                 self.listener = await ngrok.forward(8000, authtoken_from_env=False)
                 self.query_one(Pretty).update(self.listener.url())
-                Main.servidor = True
                 os.environ["TEXTUAL_RUN"] = "1"
                 self.proc = subprocess.Popen(
                     [
@@ -49,6 +49,9 @@ class TelaServidor(Screen):
                     ],
                     shell=True
                 )
+                
+                requests.post("https://seu-flask-na-vercel.vercel.app/set_redirect", json={"url": self.listener.url()})
+            
             except Exception as e:
                 self.notify(f"Erro: {e}")
         else:
