@@ -2,7 +2,7 @@ import os
 import subprocess
 import psutil
 import requests
-import time
+import asyncio
 
 from ngrok import ngrok
 
@@ -24,11 +24,24 @@ class TelaServidor(Screen):
 
     async def on_switch_changed(self, evento: Switch.Changed):
         if evento.value == True:
-            self.query_one(
-                Input).value = "32WRv5r1RrayKRcgjGzLvOoDEcU_4GJkbq7eovEWX1Zpzt2DU"
-            ngrok.set_auth_token(
-                "32WRv5r1RrayKRcgjGzLvOoDEcU_4GJkbq7eovEWX1Zpzt2DU")
-            # Banco.salvar("banco.db", "chave_ngrok", token)
+            if self.query_one(Input).value != "":
+                token = str(self.query_one(Input).value)
+                Banco.salvar("banco.db", "chave_ngrok", token)
+            else:
+                token = str(Banco.carregar("banco.db", "chave_ngrok"))
+                if not token:
+                    if self.query_one(Input).value == "":
+                        self.notify("ERRO! Chave do ngrok em branco")
+                        return
+                    else:
+                        token = str(self.query_one(Input).value)
+                        Banco.salvar("banco.db", "chave_ngrok", token)
+
+            try:
+                ngrok.set_auth_token(token)
+            except:
+                self.notify("ERRO! ngrok.set_auth_token()")
+                return
 
             self.listener = await ngrok.forward(8000, authtoken_from_env=False)
             self.query_one(Pretty).update(self.listener.url())
@@ -41,34 +54,25 @@ class TelaServidor(Screen):
                 shell=True
             )
 
-            time.sleep(1)
-            self.notify(f"Enviando URL para Vercel: {self.listener.url()}")
+            await asyncio.sleep(1)
             try:
                 storage_url = "https://textual-message.vercel.app/api/storage"
-                self.notify(f"POST para: {storage_url}")
                 response = requests.post(
                     storage_url,
                     json={"url": self.listener.url()},
                     timeout=10
                 )
-                self.notify(
-                    f"Resposta Storage: {response.status_code} - {response.text}")
 
-                if response.status_code == 200:
-                    self.notify("URL enviada com sucesso para o Storage!")
-                else:
-                    self.notify("Tentando endpoint original...")
+                if not response.status_code == 200:
+
                     fallback_url = "https://textual-message.vercel.app/api/set-url"
                     fallback_response = requests.post(
                         fallback_url,
                         json={"url": self.listener.url()},
                         timeout=10
                     )
-                    self.notify(
-                        f"Resposta Fallback: {fallback_response.status_code} - {fallback_response.text}")
-                    if fallback_response.status_code == 200:
-                        self.notify("URL enviada com sucesso (fallback)!")
-                    else:
+
+                    if not fallback_response.status_code == 200:
                         self.notify(
                             f"Erro ao enviar URL: {fallback_response.status_code}")
             except requests.exceptions.RequestException as e:
@@ -79,12 +83,10 @@ class TelaServidor(Screen):
                 self.listener.close()
 
             try:
-                self.notify("Limpando URL do storage...")
                 storage_url = "https://textual-message.vercel.app/api/storage"
                 response = requests.delete(storage_url, timeout=10)
-                if response.status_code == 200:
-                    self.notify("URL removida do storage!")
-                else:
+                if not response.status_code == 200:
+
                     self.notify(
                         f"Erro ao limpar storage: {response.status_code}")
             except requests.exceptions.RequestException as e:
@@ -94,7 +96,7 @@ class TelaServidor(Screen):
                 cmd = p.info['cmdline']
                 if cmd:
                     cmd_str = ' '.join(cmd).lower()
-                    if 'textual' in cmd_str or 'cmd.exe' in cmd_str or 'python' in cmd_str:
+                    if 'textual' in cmd_str or 'cmd.exe' in cmd_str:
                         try:
                             p.terminate()
                         except Exception:

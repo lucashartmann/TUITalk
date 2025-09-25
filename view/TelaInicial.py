@@ -300,20 +300,26 @@ class TelaInicial(Screen):
                         encontrado = False
 
                         for stt_exibido in lista:
-                            if not isinstance(stt_exibido.content, Pixels):
                                 content = stt_exibido.content
-                                if hasattr(content, 'strip'):
+                                if hasattr(content, 'strip') and isinstance(content, str) and not isinstance(stt_exibido.content, Pixels) and not isinstance(stt_exibido, Pixels):
                                     stt_exibido_conteudo = content.strip()
                                 else:
-                                    return
-                                if not isinstance(stt_exibido.content, Pixels):
+                                    break
+                            
+                                    
+                                if not isinstance(stt_exibido.content, Pixels) and hasattr(stt_exibido.content, 'strip') and isinstance(stt_exibido.content, str):
                                     stt_nome_autor_conteudo = stt_nome_autor.content.strip()
+                                else:
+                                    break
                                 if stt_exibido_conteudo == stt_nome_autor_conteudo:
                                     index = lista.index(stt_exibido)
                                     if index + 1 < len(lista):
                                         depois = lista[index + 1]
-                                        if depois.content.strip() == mensagem.content.strip():
-                                            encontrado = True
+                                        if not isinstance(depois.content, Pixels) and hasattr(depois.content, 'strip') and isinstance(depois.content, str):
+                                            if depois.content.strip() == mensagem.content.strip():
+                                                encontrado = True
+                                                break
+                                        else:
                                             break
 
                         if not encontrado:
