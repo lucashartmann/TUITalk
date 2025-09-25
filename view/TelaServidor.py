@@ -11,7 +11,7 @@ from textual.widgets import Switch, Static, Pretty, Input
 
 from database import Banco
 
-from web.api import Flesk
+from web.api import index
 
 class TelaServidor(Screen):
 
