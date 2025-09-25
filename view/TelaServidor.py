@@ -13,6 +13,7 @@ from database import Banco
 
 from api import index
 
+
 class TelaServidor(Screen):
 
     listener = ""
@@ -26,18 +27,14 @@ class TelaServidor(Screen):
     async def on_switch_changed(self, evento: Switch.Changed):
         if evento.value == True:
             try:
-                carregar = Banco.carregar("banco.db", "chave_ngrok")
-                if carregar:
-                    try:
-                        ngrok.set_auth_token(carregar)
-                    except:
-                        ngrok.set_auth_token(self.query_one(Input).value)
-                        Banco.salvar("banco.db", "chave_ngrok",
-                                     self.query_one(Input).value)
-                else:
-                    ngrok.set_auth_token(self.query_one(Input).value)
-                    Banco.salvar("banco.db", "chave_ngrok",
-                                 self.query_one(Input).value)
+                token = Banco.carregar(
+                    "banco.db", "chave_ngrok") or self.query_one(Input).value
+                try:
+                    ngrok.set_auth_token(token)
+                    Banco.salvar("banco.db", "chave_ngrok", token)
+                except Exception as e:
+                    self.query_one(Pretty).update(f"ngrok error: {e}")
+                    return
 
                 self.listener = await ngrok.forward(8000, authtoken_from_env=False)
                 self.query_one(Pretty).update(self.listener.url())
@@ -49,13 +46,12 @@ class TelaServidor(Screen):
                     ],
                     shell=True
                 )
-                
+
                 requests.post(
-                    "https://textual-message-3z7178tgw-lucashartmanns-projects.vercel.app/api/index/set_redirect",
+                    "https://textual-message.vercel.app",
                     json={"url": self.listener.url()}
                 )
 
-            
             except Exception as e:
                 self.notify(f"Erro: {e}")
         else:
