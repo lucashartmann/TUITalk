@@ -17,6 +17,8 @@ from view.widgets import Video
 
 from pydub import AudioSegment
 
+from textual_image.widget import Image
+
 
 class TelaInicial(Screen):
     CSS_PATH = "css/TelaInicial.tcss"
@@ -52,20 +54,17 @@ class TelaInicial(Screen):
             match dados["tipo"]:
 
                 case "imagem":
-                    imagem_gerada = self.obj_imagem.resizeImagem(
-                        dados["arquivo"])
-                    if imagem_gerada:
-                        pixel = self.obj_imagem.gerar_pixel(
-                            imagem_gerada)
-                        if pixel:
-                            imagem_static = Static(
-                                pixel, name=hash(pixel))
-                            self.query_one("#vs_mensagens", VerticalScroll).mount(
-                                nome_user_static, imagem_static)
-                            self.mensagens.append(
-                                {"autor": self.usuario.get_nome(), "pixel": pixel, "id": hash(pixel)})
-                            Banco.salvar("banco.db", "mensagens",
-                                         self.mensagens)
+                    img = Image(dados["arquivo"], name=hash(dados["arquivo"]))
+                    img.styles.width = 38
+                    img.styles.height = 10
+                    img.styles.margin = (0, 0, 0, 3)
+
+                    self.query_one("#vs_mensagens", VerticalScroll).mount(
+                        nome_user_static, img)
+                    self.mensagens.append(
+                        {"autor": self.usuario.get_nome(), "imagem": dados["arquivo"], "id": hash(dados["arquivo"])})
+                    Banco.salvar("banco.db", "mensagens",
+                                 self.mensagens)
 
                 case "audio":
                     self.audios[hash(dados["arquivo"])] = dados["arquivo"]
@@ -132,22 +131,17 @@ class TelaInicial(Screen):
                     dados = Download.baixar_para_memoria_ou_temp(
                         input_widget.value)
                     if dados:
-                        imagem_gerada = self.obj_imagem.resize_imagem_com_tamanho(
-                            dados["arquivo"], 5)
-                        if imagem_gerada:
-                            pixel = self.obj_imagem.gerar_pixel(
-                                imagem_gerada)
-                            if pixel:
-                                imagem_static = Static(
-                                    pixel)
-                                container = self.get_child_by_id(
-                                    "container_foto")
-                                container.mount(imagem_static, before=0)
-                                self.usuario.set_pixel_perfil(pixel)
-                                self.users[self.usuario.get_nome()
-                                           ] = self.usuario
-                                Banco.salvar(
-                                    "banco.db", "usuarios", self.users)
+                        imagem_static = Image(dados["arquivo"])
+                        imagem_static.styles.width = 30
+                        imagem_static.styles.height = 30
+                        container = self.get_child_by_id(
+                            "container_foto")
+                        container.mount(imagem_static, before=0)
+                        self.usuario.set_pixel_perfil(imagem_static)
+                        self.users[self.usuario.get_nome()
+                                   ] = self.usuario
+                        Banco.salvar(
+                            "banco.db", "usuarios", self.users)
                 except:
                     self.notify("ERRO!")
 
@@ -233,11 +227,14 @@ class TelaInicial(Screen):
                         stt_nome_autor.styles.color = self.users[mensagem["autor"]].get_cor(
                         )
 
-                    if "pixel" in mensagem.keys():
+                    if "imagem" in mensagem.keys():
 
-                        imagem_static = Static(
-                            mensagem["pixel"], name=mensagem["id"])
-                        for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Static):
+                        imagem_static = Image(
+                            mensagem["imagem"], name=mensagem["id"])
+                        imagem_static.styles.width = 38
+                        imagem_static.styles.height = 10
+                        img.styles.margin = (0, 0, 0, 3)
+                        for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Image):
                             if stt.name == imagem_static.name:
                                 encontrado = True
                                 break
@@ -300,27 +297,26 @@ class TelaInicial(Screen):
                         encontrado = False
 
                         for stt_exibido in lista:
-                                content = stt_exibido.content
-                                if hasattr(content, 'strip') and isinstance(content, str) and not isinstance(stt_exibido.content, Pixels) and not isinstance(stt_exibido, Pixels):
-                                    stt_exibido_conteudo = content.strip()
-                                else:
-                                    break
-                            
-                                    
-                                if not isinstance(stt_exibido.content, Pixels) and hasattr(stt_exibido.content, 'strip') and isinstance(stt_exibido.content, str):
-                                    stt_nome_autor_conteudo = stt_nome_autor.content.strip()
-                                else:
-                                    break
-                                if stt_exibido_conteudo == stt_nome_autor_conteudo:
-                                    index = lista.index(stt_exibido)
-                                    if index + 1 < len(lista):
-                                        depois = lista[index + 1]
-                                        if not isinstance(depois.content, Pixels) and hasattr(depois.content, 'strip') and isinstance(depois.content, str):
-                                            if depois.content.strip() == mensagem.content.strip():
-                                                encontrado = True
-                                                break
-                                        else:
+                            content = stt_exibido.content
+                            if hasattr(content, 'strip') and isinstance(content, str) and not isinstance(stt_exibido.content, Pixels) and not isinstance(stt_exibido, Pixels):
+                                stt_exibido_conteudo = content.strip()
+                            else:
+                                break
+
+                            if not isinstance(stt_exibido.content, Pixels) and hasattr(stt_exibido.content, 'strip') and isinstance(stt_exibido.content, str):
+                                stt_nome_autor_conteudo = stt_nome_autor.content.strip()
+                            else:
+                                break
+                            if stt_exibido_conteudo == stt_nome_autor_conteudo:
+                                index = lista.index(stt_exibido)
+                                if index + 1 < len(lista):
+                                    depois = lista[index + 1]
+                                    if not isinstance(depois.content, Pixels) and hasattr(depois.content, 'strip') and isinstance(depois.content, str):
+                                        if depois.content.strip() == mensagem.content.strip():
+                                            encontrado = True
                                             break
+                                    else:
+                                        break
 
                         if not encontrado:
                             self.query_one("#vs_mensagens", VerticalScroll).mount(

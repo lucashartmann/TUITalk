@@ -43,3 +43,4 @@ ListView {
     background: rgba(251, 255, 0, 1);
     width: 0%;
 }
+
