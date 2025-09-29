@@ -233,7 +233,7 @@ class TelaInicial(Screen):
                             mensagem["imagem"], name=mensagem["id"])
                         imagem_static.styles.width = 38
                         imagem_static.styles.height = 10
-                        img.styles.margin = (0, 0, 0, 3)
+                        imagem_static.styles.margin = (0, 0, 0, 3)
                         for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Image):
                             if stt.name == imagem_static.name:
                                 encontrado = True
