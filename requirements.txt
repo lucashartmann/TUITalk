@@ -15,3 +15,4 @@ psutil
 Flask
 flask-cors
 audioop-lts
+textual-image
