@@ -1,4 +1,3 @@
-import tempfile
 import time
 import wave
 import io
@@ -37,12 +36,15 @@ class TelaInicial(Screen):
     def compose(self):
         yield Header()
         with HorizontalScroll():
+            yield ListView(id="lv_grupos")
             with VerticalScroll():
                 yield VerticalScroll(id="vs_mensagens")
                 with HorizontalGroup():
                     yield Input(placeholder="Digite aqui")
             yield ListView(id="lv_usuarios")
         yield Footer()
+
+       
 
     def exibir_midia(self, dados):
         if dados:
@@ -167,7 +169,7 @@ class TelaInicial(Screen):
                     nome_user_static, nova_mensagem)
                 input_widget.clear()
 
-    async def on_click(self, evento: Click):
+    def on_click(self, evento: Click):
 
         if str(evento.widget) == "HeaderTitle()":
             if self.montou_container_foto:
@@ -175,11 +177,11 @@ class TelaInicial(Screen):
                 container.remove()
                 self.montou_container_foto = False
 
-        if isinstance(evento.widget, ProgressBar):
+        elif isinstance(evento.widget, ProgressBar):
             arquivo = self.audios[evento.widget.name]
             self.audio.tocar_audio(arquivo)
 
-        if isinstance(evento.widget, Static):
+        elif isinstance(evento.widget, Static):
             if "👤" in evento.widget.content:
                 ctt_foto = Container(id="container_foto")
                 ctt_foto.styles.layer = "above"
@@ -196,7 +198,13 @@ class TelaInicial(Screen):
             #     documento = self.documentos[evento.widget.name]
             # TODO: abrir documento, ou abrir foto dele montou_container_foto
 
+
     def on_mount(self):
+        self.query_one("#lv_grupos", ListView).append(Static("Grupos:"))
+        self.query_one("#lv_grupos", ListView).append(Static("Adicionar Grupo:"))
+        self.query_one("#lv_grupos", ListView).append(ListItem(Static(" >Senac")))
+        self.query_one("#lv_grupos", ListView).append(ListItem(Static("    👤 🟢 Lucas")))
+        
         users = self.listar_usuarios()
         self.atualizar_lista_users(users)
         self.poll_dados()
@@ -278,9 +286,8 @@ class TelaInicial(Screen):
                                 stt_nome_autor, bar)
 
                     elif "video" in mensagem.keys():
-                        stt = Video.Video(mensagem["video"])
-
                         if mensagem["id"] not in self.videos.keys():
+                            stt = Video.Video(mensagem["video"])
 
                             self.videos[mensagem["id"]] = mensagem["video"]
 
@@ -349,6 +356,8 @@ class TelaInicial(Screen):
     def atualizar_lista_users(self, users):
         lista = self.query_one("#lv_usuarios", ListView)
         lista.remove_children()
+        lista.append(Static("Usuários:"))
+
         if users:
             for chave, user in users.items():
                 nome_user = Static(chave)

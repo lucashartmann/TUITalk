@@ -14,7 +14,7 @@
     },
     {
       "source": "/",
-      "destination": "/web/index.html"
+      "destination": "/web/Index.html"
     },
     {
       "source": "/Style.css",

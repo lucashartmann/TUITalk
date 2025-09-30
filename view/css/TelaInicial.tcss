@@ -20,12 +20,17 @@ TelaInicial {
 
 Input {
     margin: 2;
-    height: 4;
+    min-height: 4;
     background: rgba(78, 64, 44, 1);
+    width: auto;
+    min-width: 70%;
+    height: auto;
 }
 
 ListView {
     background: rgba(61, 51, 37, 1);
+    width: 10%;
+    height: 100%;
 }
 
 #vs_imagens {

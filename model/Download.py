@@ -5,11 +5,16 @@ import tempfile
 import wave
 from pydub import AudioSegment
 import yt_dlp
+import re
+import sys
+from urllib.parse import urlparse, parse_qs
 
 
 def baixar_para_memoria_ou_temp(url: str):
     if "youtube" in url or "yotu.be" in url:
         return baixar_youtube(url)
+    elif "drive.google.com" in url:
+        return baixar_drive(url)
 
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     s = requests.Session()
@@ -130,3 +135,65 @@ def baixar_youtube(url: str, prefer_audio=False, audio_format="mp3"):
     else:
         f = open(filename, "rb")
         return {"arquivo": f, "tipo": "video", "nome": nome, "_temp_path": filename}
+
+
+def baixar_drive(url: str):
+    file_id = None
+    if "/d/" in url:
+        file_id = url.split("/d/")[1].split("/")[0]
+    else:
+        qs = parse_qs(urlparse(url).query)
+        file_id = qs.get("id", [None])[0]
+
+    if not file_id:
+        raise ValueError("Não consegui extrair o ID do Google Drive")
+
+    session = requests.Session()
+    URL = "https://docs.google.com/uc?export=download"
+    response = session.get(URL, params={"id": file_id}, stream=True)
+
+    token = None
+    for k, v in response.cookies.items():
+        if k.startswith("download_warning"):
+            token = v
+            break
+    if token:
+        response = session.get(
+            URL, params={"id": file_id, "confirm": token}, stream=True)
+
+    nome = response.headers.get("Content-Disposition")
+    if nome:
+        import re
+        m = re.search(r'filename\*?=(?:UTF-8\'\')?"?([^";]+)"?', nome)
+        nome = m.group(1) if m else f"{file_id}.bin"
+    else:
+        nome = f"{file_id}.bin"
+
+    ctype = response.headers.get("Content-Type", "").lower()
+    ext = os.path.splitext(nome)[1].lower()
+    if ctype.startswith("image/") or ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+        tipo = "imagem"
+    elif ctype.startswith("video/") or ext in [".mp4", ".mov", ".avi", ".mkv", ".webm"]:
+        tipo = "video"
+    elif ctype.startswith("audio/") or ext in [".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"]:
+        tipo = "audio"
+    else:
+        tipo = "documento"
+
+    content = io.BytesIO()
+    chunk_size = 32768
+    try:
+        for chunk in response.iter_content(chunk_size):
+            if chunk:
+                content.write(chunk)
+        content.seek(0)
+        return {"arquivo": content, "tipo": tipo, "nome": nome}
+    except Exception:
+        fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(nome)[1])
+        os.close(fd)
+        with open(temp_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size):
+                if chunk:
+                    f.write(chunk)
+        arquivo = open(temp_path, "rb")
+        return {"arquivo": arquivo, "tipo": tipo, "nome": nome, "_temp_path": temp_path}

@@ -1,7 +1,7 @@
 TelaLogin {
-    background: rgba(40, 67, 88, 1);
+    background: rgba(87, 156, 209, 1);
     align: center middle;
-    width: 100%;
+    width: auto;
 }
 
 Input {
