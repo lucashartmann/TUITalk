@@ -3,7 +3,8 @@ import os
 import sys
 
 if __name__ == "__main__":
-
     app = App()
-    app.tela = "tela_login"
+    if os.environ.get("TEXTUAL_RUN") == "1":
+        app.tela = "tela_login"
+    os.environ["TEXTUAL_RUN"] = "0"
     app.run()
