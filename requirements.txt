@@ -16,3 +16,4 @@ Flask
 flask-cors
 audioop-lts
 textual-image
+textual-colorpicker

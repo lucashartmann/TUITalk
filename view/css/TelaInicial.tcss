@@ -14,8 +14,20 @@ TelaInicial {
     margin: 2;
 }
 
+Audio.Audio, Video.Video, Image {
+    margin: 0 0 0 6;
+}
+
+Audio, Video, Image {
+    margin: 0 0 0 6;
+}
+
 #vs_mensagens Static {
-    margin-left: 2;
+    margin: 0 0 0 2;
+}
+
+.stt_usuario {
+    margin: 2 0 0 2;
 }
 
 Input {

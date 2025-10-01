@@ -3,13 +3,12 @@
 #### Alta Prioridade:
 
 - Grupos
-- Implementar documentos, fazer um vizualizador de documento
-- Implemetar poder escolher entre audio e video do youtube
-- Arrumar desing TelaLogin, centralizar widgets
+- Implementar documentos e criar um visualizador de documentos
+- Permitir escolher entre áudio e vídeo do YouTube
+- Ajustar o design da TelaLogin e centralizar os widgets
 
 #### Baixa Prioridade:
 
-- Fazer uma progress bar que aumenta conforme o audio vai tocando
-- Poder para o audio no meio e quando tocar denovo ele tocar do meio, poder clicar na metade da progress bar e o audio começar na metade
-- Usar objeto Usuario ?
-- Chamadas de video
+- Utilizar o objeto Usuario?
+- Chamadas de vídeo (não é possível, pois o Textual Serve tem acesso apenas à câmera do host, não do usuário)
+- Enviar áudio (não é possível, pois o Textual Serve tem acesso apenas ao microfone do host, não do usuário)

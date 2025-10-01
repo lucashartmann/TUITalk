@@ -1,11 +1,12 @@
 from textual.screen import Screen
 from textual.widgets import Input, Static,  Button, Header, Footer
 from textual.color import Color
-from textual.app import App
 from database import Banco
 from view.TelaInicial import TelaInicial
 import time
 from unidecode import unidecode
+from textual_colorpicker import ColorPicker
+from textual import on
 
 
 class TelaLogin(Screen):
@@ -17,23 +18,27 @@ class TelaLogin(Screen):
         yield Static("Nome:")
         yield Input(placeholder="Nome aqui", id="usuario")
         yield Static("Cor do nome:")
-        yield Input(placeholder="Cor aqui", id="cor")
+        yield ColorPicker()
         yield Button("Entrar")
         yield Footer()
 
     nome = ""
+    
+    # @on(ColorPicker.Changed)
+    # def cor_mudou(self, evento = ColorPicker.Changed):
+    #     self.notify(str(self.query_one(ColorPicker).color))
+
 
     def on_button_pressed(self):
         carregar_users = Banco.carregar("banco.db", "usuarios") or {}
-        TelaInicial.users = carregar_users
         nome_input = self.query_one("#usuario", Input).value.strip()
 
-        cor = unidecode(self.query_one("#cor", Input).value.strip().lower())
+        cor = self.query_one(ColorPicker).color
 
-        if cor:
-            if carregar_users and cor:
+        if carregar_users and cor:
                 for user in carregar_users.values():
-                    if user.get_cor() == cor:
+                    last_seen = user.get_tempo()
+                    if user.get_cor() == cor and agora - last_seen <= 60:
                         self.notify("ERRO! Cor já escolhida")
                         return
 
@@ -50,8 +55,9 @@ class TelaLogin(Screen):
 
         agora = int(time.time())
 
-        if nome_input in TelaInicial.users.keys():
-            last_seen = TelaInicial.users[nome_input].get_tempo()
+        
+        if carregar_users and nome_input in carregar_users.keys():
+            last_seen = carregar_users[nome_input].get_tempo()
 
             if agora - last_seen <= 60:
                 self.notify("ERRO! Nome já em uso")
@@ -61,15 +67,15 @@ class TelaLogin(Screen):
                 user.set_nome(nome_input)
                 user.set_cor(cor)
                 user.set_tempo(agora)
-                TelaInicial.users[user.get_nome()] = user
+                carregar_users[user.get_nome()] = user
 
         else:
             user = TelaInicial.usuario
             user.set_nome(nome_input)
             user.set_cor(cor)
             user.set_tempo(agora)
-            TelaInicial.users[user.get_nome()] = user
+            carregar_users[user.get_nome()] = user
 
-        Banco.salvar("banco.db", "usuarios", TelaInicial.users)
+        Banco.salvar("banco.db", "usuarios", carregar_users)
 
         self.app.switch_screen("tela_inicial")

@@ -3,16 +3,16 @@ import wave
 import io
 
 from textual.screen import Screen
-from textual.widgets import Input, Static, ListItem, ListView, Header, Footer, ProgressBar
+from textual.widgets import Input, Static, ListItem, ListView, Header, Footer
 from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup, Container
 from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
-from rich_pixels import Pixels
+from textual.color import Color
 
 from database import Banco
-from model import Audio, Imagem, Download, Usuario
-from view.widgets import Video
+from model import Download, Usuario
+from view.widgets import Audio, Video
 
 from pydub import AudioSegment
 
@@ -21,15 +21,9 @@ from textual_image.widget import Image
 
 class TelaInicial(Screen):
     CSS_PATH = "css/TelaInicial.tcss"
-    users = dict()
     mensagens = list()
     _poll_timer: Timer = None
-    audio = Audio.ChatVoz()
-    audios = dict()
-    obj_imagem = Imagem.Imagem()
-    videos = dict()
     resultado = ""
-    documentos = dict()
     montou_container_foto = False
     usuario = Usuario.Usuario()
 
@@ -44,12 +38,12 @@ class TelaInicial(Screen):
             yield ListView(id="lv_usuarios")
         yield Footer()
 
-       
-
     def exibir_midia(self, dados):
         if dados:
 
-            nome_user_static = Static(self.usuario.get_nome())
+            nome_user_static = Static(
+                self.usuario.get_nome(), classes="stt_usuario")
+
             if self.usuario.get_cor():
                 nome_user_static.styles.color = self.usuario.get_cor()
 
@@ -69,7 +63,6 @@ class TelaInicial(Screen):
                                  self.mensagens)
 
                 case "audio":
-                    self.audios[hash(dados["arquivo"])] = dados["arquivo"]
                     arquivo = dados["arquivo"]
                     buffer = io.BytesIO()
                     blob = arquivo
@@ -94,18 +87,17 @@ class TelaInicial(Screen):
                         blob = buffer.getvalue()
 
                     self.mensagens.append(
-                        {"autor": self.usuario.get_nome(), "audio": blob, "id": hash(dados["arquivo"])})
+                        {"autor": self.usuario.get_nome(), "audio": blob, "id": hash(dados["arquivo"]), "nome": dados["nome"]})
+
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
-                        nome_user_static, ProgressBar(name=hash(dados["arquivo"])))
+                        nome_user_static, Audio.Audio(blob, nome=dados["nome"], name=hash(dados["arquivo"])))
+
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
 
                 case "video":
-
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
                         nome_user_static, Video.Video(dados["_temp_path"]))
-
-                    self.videos[hash(dados["arquivo"])] = dados["_temp_path"]
                     self.mensagens.append(
                         {"autor": self.usuario.get_nome(), "video": dados["_temp_path"], "id": hash(dados["arquivo"])})
                     Banco.salvar("banco.db", "mensagens",
@@ -114,15 +106,11 @@ class TelaInicial(Screen):
                 case "documento":
                     self.query_one("#vs_mensagens", VerticalScroll).mount(nome_user_static, Static(
                         dados["nome"], name=hash(dados["arquivo"])))
-                    self.documentos[hash(
-                        dados["arquivo"])] = dados["arquivo"]
                     self.mensagens.append(
                         {"autor": self.usuario.get_nome(), "documento": dados["arquivo"], "id": hash(dados["arquivo"])})
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
-
-    # def make_progress(self) -> None:
-    #     self.query_one(ProgressBar).advance(1)
+                    # TODO: implementar self.query_one("#vs_mensagens", VerticalScroll).mount(nome_user_static, Static(nome_do_arquivo.extensao, name=hash(dados["arquivo"])))
 
     def on_key(self, event: Key):
         if event.key == "enter" and self.usuario.get_nome():
@@ -148,19 +136,18 @@ class TelaInicial(Screen):
                     self.notify("ERRO!")
 
             elif "http" in input_widget.value or "https" in input_widget.value:
-                try:
-                    dados = Download.baixar_para_memoria_ou_temp(
-                        input_widget.value)
-                    if dados:
-                        self.exibir_midia(dados)
-                    else:
-                        raise Exception
-                except Exception as e:
-                    self.notify(f"Erro com Midia. {e}")
+                dados = Download.baixar_para_memoria_ou_temp(
+                    input_widget.value)
+                if dados:
+                    self.exibir_midia(dados)
+                else:
+                    raise Exception
+
             else:
                 nome_user_static = Static(self.usuario.get_nome())
                 if self.usuario.get_cor():
-                    nome_user_static.styles.color = f"{self.usuario.get_cor()} 100%"
+                    nome_user_static.styles.color = self.usuario.get_cor()
+
                 nova_mensagem = Static(f"  {str(input_widget.value)}")
                 self.mensagens.append(
                     {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.value)})
@@ -176,10 +163,6 @@ class TelaInicial(Screen):
                 container = self.get_child_by_id("container_foto")
                 container.remove()
                 self.montou_container_foto = False
-
-        elif isinstance(evento.widget, ProgressBar):
-            arquivo = self.audios[evento.widget.name]
-            self.audio.tocar_audio(arquivo)
 
         elif isinstance(evento.widget, Static):
             if "👤" in evento.widget.content:
@@ -198,13 +181,15 @@ class TelaInicial(Screen):
             #     documento = self.documentos[evento.widget.name]
             # TODO: abrir documento, ou abrir foto dele montou_container_foto
 
-
     def on_mount(self):
         self.query_one("#lv_grupos", ListView).append(Static("Grupos:"))
-        self.query_one("#lv_grupos", ListView).append(Static("Adicionar Grupo:"))
-        self.query_one("#lv_grupos", ListView).append(ListItem(Static(" >Senac")))
-        self.query_one("#lv_grupos", ListView).append(ListItem(Static("    👤 🟢 Lucas")))
-        
+        self.query_one("#lv_grupos", ListView).append(
+            Static("Adicionar Grupo:"))
+        self.query_one("#lv_grupos", ListView).append(
+            ListItem(Static(" >Senac")))
+        self.query_one("#lv_grupos", ListView).append(
+            ListItem(Static("    👤 🟢 Lucas")))
+
         users = self.listar_usuarios()
         self.atualizar_lista_users(users)
         self.poll_dados()
@@ -230,7 +215,8 @@ class TelaInicial(Screen):
 
                 for mensagem in self.mensagens:
 
-                    stt_nome_autor = Static(mensagem["autor"])
+                    stt_nome_autor = Static(
+                        mensagem["autor"], classes="stt_usuario")
                     if self.users[mensagem["autor"]].get_cor():
                         stt_nome_autor.styles.color = self.users[mensagem["autor"]].get_cor(
                         )
@@ -251,7 +237,6 @@ class TelaInicial(Screen):
                                 stt_nome_autor, imagem_static)
 
                     elif "audio" in mensagem.keys():
-                        bar = ProgressBar(name=mensagem["id"])
 
                         buffer = mensagem["audio"]
                         if not isinstance(buffer, bytes):
@@ -275,10 +260,11 @@ class TelaInicial(Screen):
                         else:
                             return
 
-                        self.audios[mensagem["id"]] = audio
+                        bar = Audio.Audio(
+                            audio, mensagem["nome"], name=mensagem["id"])
 
-                        for progressbar_exibidas in self.query_one("#vs_mensagens", VerticalScroll).query(ProgressBar):
-                            if progressbar_exibidas.name == bar.name:
+                        for audio_exibidos in self.query_one("#vs_mensagens", VerticalScroll).query(Audio.Audio):
+                            if audio_exibidos.name == bar.name:
                                 encontrado = True
                                 break
                         if not encontrado:
@@ -287,15 +273,19 @@ class TelaInicial(Screen):
 
                     elif "video" in mensagem.keys():
                         if mensagem["id"] not in self.videos.keys():
-                            stt = Video.Video(mensagem["video"])
+                            stt = Video.Video(
+                                mensagem["video"], name=mensagem["id"])
 
-                            self.videos[mensagem["id"]] = mensagem["video"]
-
+                        for videos_exibidos in self.query_one("#vs_mensagens", VerticalScroll).query(Video.Video):
+                            if videos_exibidos.name == stt.name:
+                                encontrado = True
+                                break
+                        if not encontrado:
                             self.query_one("#vs_mensagens", VerticalScroll).mount(
                                 stt_nome_autor, stt)
 
                     elif "documento" in mensagem.keys():
-                        self.documentos[mensagem["id"]] = mensagem["documento"]
+                        pass  # TODO: implementar
 
                     else:
                         mensagem = Static(mensagem["mensagem"])
@@ -305,24 +295,15 @@ class TelaInicial(Screen):
 
                         for stt_exibido in lista:
                             content = stt_exibido.content
-                            if hasattr(content, 'strip') and isinstance(content, str) and not isinstance(stt_exibido.content, Pixels) and not isinstance(stt_exibido, Pixels):
-                                stt_exibido_conteudo = content.strip()
-                            else:
-                                break
+                            stt_exibido_conteudo = content.strip()
+                            stt_nome_autor_conteudo = stt_nome_autor.content.strip()
 
-                            if not isinstance(stt_exibido.content, Pixels) and hasattr(stt_exibido.content, 'strip') and isinstance(stt_exibido.content, str):
-                                stt_nome_autor_conteudo = stt_nome_autor.content.strip()
-                            else:
-                                break
                             if stt_exibido_conteudo == stt_nome_autor_conteudo:
                                 index = lista.index(stt_exibido)
                                 if index + 1 < len(lista):
                                     depois = lista[index + 1]
-                                    if not isinstance(depois.content, Pixels) and hasattr(depois.content, 'strip') and isinstance(depois.content, str):
-                                        if depois.content.strip() == mensagem.content.strip():
-                                            encontrado = True
-                                            break
-                                    else:
+                                    if depois.content.strip() == mensagem.content.strip():
+                                        encontrado = True
                                         break
 
                         if not encontrado:
