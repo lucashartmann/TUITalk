@@ -10,7 +10,7 @@ from textual.widget import Widget
 
 class Audio(Widget):
     def __init__(self, audio_segment, nome, *args, **kwargs):
-        super().__init__()
+        super().__init__(*args, **kwargs)
         self.is_playing = False
         self.audio_segment = audio_segment
         self.duration = self.get_duration()

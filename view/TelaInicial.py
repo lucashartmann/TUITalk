@@ -98,7 +98,7 @@ class TelaInicial(Screen):
 
                 case "video":
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
-                        nome_user_static, Video.Video(dados["_temp_path"]))
+                        nome_user_static, Video.Video(dados["_temp_path"], name=hash(dados["arquivo"])))
                     self.mensagens.append(
                         {"autor": self.usuario.get_nome(), "video": dados["_temp_path"], "id": hash(dados["arquivo"])})
                     Banco.salvar("banco.db", "mensagens",
@@ -116,49 +116,54 @@ class TelaInicial(Screen):
     def on_button_pressed(self):
         if self.usuario.get_nome():
             input_widget = self.query_one(TextArea)
+            
+            if input_widget.text:
+                if self.montou_container_foto:
+                    try:
+                        input_widget = self.query_one(Input)
+                        dados = Download.baixar_para_memoria_ou_temp(
+                            input_widget.value)
+                        if dados:
+                            imagem_static = Image(dados["arquivo"])
+                            imagem_static.styles.width = 30
+                            imagem_static.styles.height = 30
+                            container = self.get_child_by_id(
+                                "container_foto")
+                            container.mount(imagem_static, before=0)
+                            self.usuario.set_pixel_perfil(imagem_static)
+                            self.users[self.usuario.get_nome()
+                                    ] = self.usuario
+                            Banco.salvar(
+                                "banco.db", "usuarios", self.users)
+                        else:
+                            raise Exception
+                    except Exception as e:
+                        self.notify(f"ERRO! {e}")
 
-            if self.montou_container_foto:
-                try:
-                    input_widget = self.query_one(Input)
-                    dados = Download.baixar_para_memoria_ou_temp(
-                        input_widget.value)
-                    if dados:
-                        imagem_static = Image(dados["arquivo"])
-                        imagem_static.styles.width = 30
-                        imagem_static.styles.height = 30
-                        container = self.get_child_by_id(
-                            "container_foto")
-                        container.mount(imagem_static, before=0)
-                        self.usuario.set_pixel_perfil(imagem_static)
-                        self.users[self.usuario.get_nome()
-                                   ] = self.usuario
-                        Banco.salvar(
-                            "banco.db", "usuarios", self.users)
-                        input_widget.clear()
-                except:
-                    self.notify("ERRO!")
-                    input_widget.clear()
+                elif "http" in input_widget.text or "https" in input_widget.text:
+                    try:
+                        dados = Download.baixar_para_memoria_ou_temp(
+                            input_widget.text)
+                        if dados:
+                            self.exibir_midia(dados)
+                        else:
+                            raise Exception
+                    except Exception as e:
+                        self.notify(f"ERRO! {e}")
 
-            elif "http" in input_widget.text or "https" in input_widget.text:
-                dados = Download.baixar_para_memoria_ou_temp(
-                    input_widget.text)
-                if dados:
-                    self.exibir_midia(dados)
                 else:
-                    raise Exception
+                    nome_user_static = Static(self.usuario.get_nome(), classes="stt_usuario")
+                    if self.usuario.get_cor():
+                        nome_user_static.styles.color = self.usuario.get_cor()
 
-            else:
-                nome_user_static = Static(self.usuario.get_nome())
-                if self.usuario.get_cor():
-                    nome_user_static.styles.color = self.usuario.get_cor()
-
-                nova_mensagem = Static(f"  {str(input_widget.text)}")
-                self.mensagens.append(
-                    {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.text)})
-                Banco.salvar("banco.db", "mensagens", self.mensagens)
-                self.query_one("#vs_mensagens", VerticalScroll).mount(
-                    nome_user_static, nova_mensagem)
-                input_widget.clear()
+                    nova_mensagem = Static(f"  {str(input_widget.text)}")
+                    self.mensagens.append(
+                        {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.text)})
+                    Banco.salvar("banco.db", "mensagens", self.mensagens)
+                    self.query_one("#vs_mensagens", VerticalScroll).mount(
+                        nome_user_static, nova_mensagem)
+            
+            input_widget.clear()
 
     def on_click(self, evento: Click):
 
@@ -205,6 +210,8 @@ class TelaInicial(Screen):
 
             self.atualizar_usuario()
             users = self.listar_usuarios()
+            
+            encontrado = False
 
             carregar_users = Banco.carregar("banco.db", "usuarios")
             if carregar_users and carregar_users != self.users:
@@ -215,7 +222,6 @@ class TelaInicial(Screen):
 
             if carregar_msgs:
                 self.mensagens = carregar_msgs
-                encontrado = False
 
                 for mensagem in self.mensagens:
 
@@ -240,7 +246,6 @@ class TelaInicial(Screen):
                                 stt_nome_autor, imagem_static)
 
                     elif "audio" in mensagem.keys():
-
                         for audio_exibidos in self.query_one("#vs_mensagens", VerticalScroll).query(Audio.Audio):
                             if audio_exibidos.name == mensagem["id"]:
                                 encontrado = True
@@ -274,7 +279,6 @@ class TelaInicial(Screen):
                                     stt_nome_autor, bar)
 
                     elif "video" in mensagem.keys():
-
                         for videos_exibidos in self.query_one("#vs_mensagens", VerticalScroll).query(Video.Video):
                             if videos_exibidos.name == mensagem["id"]:
                                 encontrado = True
@@ -292,7 +296,6 @@ class TelaInicial(Screen):
                         mensagem = Static(mensagem["mensagem"])
                         lista = list(self.query_one(
                             "#vs_mensagens", VerticalScroll).query(Static))
-                        encontrado = False
 
                         for stt_exibido in lista:
                             content = stt_exibido.content

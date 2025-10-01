@@ -5,8 +5,6 @@ import tempfile
 import wave
 from pydub import AudioSegment
 import yt_dlp
-import re
-import sys
 from urllib.parse import urlparse, parse_qs
 
 

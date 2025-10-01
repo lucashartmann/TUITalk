@@ -14,14 +14,6 @@ TelaInicial {
     margin: 2;
 }
 
-Audio.Audio, Video.Video, Image {
-    margin: 0 0 0 6;
-}
-
-Audio, Video, Image {
-    margin: 0 0 0 6;
-}
-
 #vs_mensagens Static {
     margin: 0 0 0 2;
 }
@@ -48,19 +40,10 @@ ListView {
     height: 100%;
 }
 
-#vs_imagens {
-    margin: 2;
-    background: rgba(61, 51, 37, 1);
-    width: 0%;
+Audio, Video, Image {
+    margin: 0 0 0 6;
 }
 
-#vs_imagens Static {
-    margin: 2;
+Video Image {
+    margin-right: 1;
 }
-
-#vs_imagens {
-    margin: 2;
-    background: rgba(251, 255, 0, 1);
-    width: 0%;
-}
-
