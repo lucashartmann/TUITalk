@@ -8,7 +8,6 @@ from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup
 from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
-from textual.color import Color
 
 from database import Banco
 from model import Download, Usuario
@@ -222,65 +221,62 @@ class TelaInicial(Screen):
                         )
 
                     if "imagem" in mensagem.keys():
-
-                        imagem_static = Image(
-                            mensagem["imagem"], name=mensagem["id"])
-                        imagem_static.styles.width = 38
-                        imagem_static.styles.height = 10
-                        imagem_static.styles.margin = (0, 0, 0, 3)
                         for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Image):
-                            if stt.name == imagem_static.name:
+                            if stt.name == mensagem["id"]:
                                 encontrado = True
                                 break
                         if not encontrado:
+                            imagem_static = Image(
+                                mensagem["imagem"], name=mensagem["id"])
+                            imagem_static.styles.width = 38
+                            imagem_static.styles.height = 10
+                            imagem_static.styles.margin = (0, 0, 0, 3)
                             self.query_one("#vs_mensagens", VerticalScroll).mount(
                                 stt_nome_autor, imagem_static)
 
                     elif "audio" in mensagem.keys():
 
-                        buffer = mensagem["audio"]
-                        if not isinstance(buffer, bytes):
-                            buffer.seek(0)
-                            blob = buffer.read()
-                        else:
-                            blob = mensagem["audio"]
-
-                        if blob[:4] == b'RIFF':
-                            buffer = io.BytesIO(blob)
-                            audio = wave.open(buffer, "rb")
-                        elif blob[:3] == b'ID3' or (blob[0] == 0xFF and (blob[1] & 0xE0) == 0xE0):
-                            audio = AudioSegment.from_file(
-                                io.BytesIO(blob), format="mp3")
-                        elif blob[:4] == b'OggS':
-                            audio = AudioSegment.from_file(
-                                io.BytesIO(blob), format="ogg")
-                        elif blob[:4] == b'fLaC':
-                            audio = AudioSegment.from_file(
-                                io.BytesIO(blob), format="flac")
-                        else:
-                            return
-
-                        bar = Audio.Audio(
-                            audio, mensagem["nome"], name=mensagem["id"])
-
                         for audio_exibidos in self.query_one("#vs_mensagens", VerticalScroll).query(Audio.Audio):
-                            if audio_exibidos.name == bar.name:
+                            if audio_exibidos.name == mensagem["id"]:
                                 encontrado = True
                                 break
+                        
                         if not encontrado:
-                            self.query_one("#vs_mensagens", VerticalScroll).mount(
-                                stt_nome_autor, bar)
+                                buffer = mensagem["audio"]
+                                if not isinstance(buffer, bytes):
+                                    buffer.seek(0)
+                                    blob = buffer.read()
+                                else:
+                                    blob = mensagem["audio"]
+
+                                if blob[:4] == b'RIFF':
+                                    buffer = io.BytesIO(blob)
+                                    audio = wave.open(buffer, "rb")
+                                elif blob[:3] == b'ID3' or (blob[0] == 0xFF and (blob[1] & 0xE0) == 0xE0):
+                                    audio = AudioSegment.from_file(
+                                        io.BytesIO(blob), format="mp3")
+                                elif blob[:4] == b'OggS':
+                                    audio = AudioSegment.from_file(
+                                        io.BytesIO(blob), format="ogg")
+                                elif blob[:4] == b'fLaC':
+                                    audio = AudioSegment.from_file(
+                                        io.BytesIO(blob), format="flac")
+                                else:
+                                    return
+                                bar = Audio.Audio(
+                                    audio, mensagem["nome"], name=mensagem["id"])
+                                self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                    stt_nome_autor, bar)
 
                     elif "video" in mensagem.keys():
-                        if mensagem["id"] not in self.videos.keys():
-                            stt = Video.Video(
-                                mensagem["video"], name=mensagem["id"])
 
                         for videos_exibidos in self.query_one("#vs_mensagens", VerticalScroll).query(Video.Video):
-                            if videos_exibidos.name == stt.name:
+                            if videos_exibidos.name == mensagem["id"]:
                                 encontrado = True
                                 break
                         if not encontrado:
+                            stt = Video.Video(
+                                mensagem["video"], name=mensagem["id"])
                             self.query_one("#vs_mensagens", VerticalScroll).mount(
                                 stt_nome_autor, stt)
 
