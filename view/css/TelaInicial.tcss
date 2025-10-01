@@ -15,12 +15,13 @@ TelaInicial {
 }
 
 #vs_mensagens Static {
+    margin: 0 0 0 4;
+}
+
+#vs_mensagens Static.stt_usuario {
     margin: 0 0 0 2;
 }
 
-.stt_usuario {
-    margin: 2 0 0 2;
-}
 
 #bt_enviar_mensagem {
     margin-top: 2;

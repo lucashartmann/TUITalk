@@ -25,7 +25,7 @@ class Video(Widget):
         self.frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.pil_img = Image.fromarray(frame).resize((width, height))
 
-        self.fps = self.captura_video.get(cv2.CAP_PROP_FPS) or 15
+        self.fps = self.captura_video.get(cv2.CAP_PROP_FPS) or 60
         self.interval = 1 / self.fps
         self.prev_frame = None
 
@@ -76,8 +76,7 @@ class Video(Widget):
         if img:
             h = hashlib.md5(frame[::10, ::10].tobytes()).hexdigest()
             if getattr(self, "prev_hash", None) != h:
-                self.query_one(TextualImage)._image = img
-                self.query_one(TextualImage).refresh()
+                self.query_one(TextualImage).image = img
                 self.query_one(TextualImage).styles.width = "100%"
                 self.query_one(TextualImage).styles.height = "87%"
                 self.prev_frame = img
