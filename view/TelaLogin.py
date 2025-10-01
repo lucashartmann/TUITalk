@@ -4,10 +4,7 @@ from textual.color import Color
 from database import Banco
 from view.TelaInicial import TelaInicial
 import time
-from unidecode import unidecode
 from textual_colorpicker import ColorPicker
-from textual import on
-
 
 class TelaLogin(Screen):
 

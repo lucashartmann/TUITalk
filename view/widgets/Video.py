@@ -8,7 +8,7 @@ from textual.timer import Timer
 
 class Video(Widget):
 
-    def __init__(self, video_path, width=38, height=10):
+    def __init__(self, video_path, width=30, height=10):
         super().__init__()
         self.cap = cv2.VideoCapture(video_path)
         self.width = width
@@ -35,13 +35,13 @@ class Video(Widget):
         self.pause()
 
     def on_mount(self):
-        self.styles.width = 30
-        self.styles.height = 13
-        self.query_one(TextualImage).styles.width = 30
-        self.query_one(TextualImage).styles.height = 10
+        self.styles.width = self.width
+        self.styles.height = self.height
+        self.query_one(TextualImage).styles.width = self.width
+        self.query_one(TextualImage).styles.height = self.height
         self.query_one(Button).styles.align = ("center", "middle")
         self.query_one(Button).styles.height = 3
-        self.query_one(Button).styles.width = 30
+        self.query_one(Button).styles.width = self.width
 
     def start(self):
         self.timer = self.set_interval(1/30, self.update_frame)
