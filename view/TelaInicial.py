@@ -3,11 +3,12 @@ import wave
 import io
 
 from textual.screen import Screen
-from textual.widgets import Input, Static, ListItem, ListView, Header, Footer
+from textual.widgets import Input, TextArea, Button, Static, ListItem, ListView, Header, Footer
 from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup, Container
-from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
+
+from textual_image.widget import Image
 
 from database import Banco
 from model import Download, Usuario
@@ -15,11 +16,11 @@ from view.widgets import Audio, Video
 
 from pydub import AudioSegment
 
-from textual_image.widget import Image
 
 
 class TelaInicial(Screen):
     CSS_PATH = "css/TelaInicial.tcss"
+    
     mensagens = list()
     _poll_timer: Timer = None
     resultado = ""
@@ -33,7 +34,8 @@ class TelaInicial(Screen):
             with VerticalScroll():
                 yield VerticalScroll(id="vs_mensagens")
                 with HorizontalGroup():
-                    yield Input(placeholder="Digite aqui")
+                    yield TextArea(placeholder="Digite aqui")
+                    yield Button("Enviar", id="bt_enviar_mensagem")
             yield ListView(id="lv_usuarios")
         yield Footer()
 
@@ -111,12 +113,13 @@ class TelaInicial(Screen):
                                  self.mensagens)
                     # TODO: implementar self.query_one("#vs_mensagens", VerticalScroll).mount(nome_user_static, Static(nome_do_arquivo.extensao, name=hash(dados["arquivo"])))
 
-    def on_key(self, event: Key):
-        if event.key == "enter" and self.usuario.get_nome():
-            input_widget = self.query_one(Input)
+    def on_button_pressed(self):
+        if self.usuario.get_nome():
+            input_widget = self.query_one(TextArea)
 
             if self.montou_container_foto:
                 try:
+                    input_widget = self.query_one(Input)
                     dados = Download.baixar_para_memoria_ou_temp(
                         input_widget.value)
                     if dados:
@@ -131,12 +134,14 @@ class TelaInicial(Screen):
                                    ] = self.usuario
                         Banco.salvar(
                             "banco.db", "usuarios", self.users)
+                        input_widget.clear()
                 except:
                     self.notify("ERRO!")
+                    input_widget.clear()
 
-            elif "http" in input_widget.value or "https" in input_widget.value:
+            elif "http" in input_widget.text or "https" in input_widget.text:
                 dados = Download.baixar_para_memoria_ou_temp(
-                    input_widget.value)
+                    input_widget.text)
                 if dados:
                     self.exibir_midia(dados)
                 else:
@@ -147,9 +152,9 @@ class TelaInicial(Screen):
                 if self.usuario.get_cor():
                     nome_user_static.styles.color = self.usuario.get_cor()
 
-                nova_mensagem = Static(f"  {str(input_widget.value)}")
+                nova_mensagem = Static(f"  {str(input_widget.text)}")
                 self.mensagens.append(
-                    {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.value)})
+                    {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.text)})
                 Banco.salvar("banco.db", "mensagens", self.mensagens)
                 self.query_one("#vs_mensagens", VerticalScroll).mount(
                     nome_user_static, nova_mensagem)

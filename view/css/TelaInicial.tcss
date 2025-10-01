@@ -30,12 +30,15 @@ Audio, Video, Image {
     margin: 2 0 0 2;
 }
 
-Input {
+#bt_enviar_mensagem {
+    margin-top: 2;
+}
+
+TextArea {
     margin: 2;
     min-height: 4;
     background: rgba(78, 64, 44, 1);
-    width: auto;
-    min-width: 70%;
+    width: 70%;
     height: auto;
 }
 

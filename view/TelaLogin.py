@@ -1,10 +1,11 @@
 from textual.screen import Screen
-from textual.widgets import Input, Static,  Button, Header, Footer
+from textual.widgets import Static,  Button, Header, Footer, TextArea
 from textual.color import Color
 from database import Banco
 from view.TelaInicial import TelaInicial
 import time
 from textual_colorpicker import ColorPicker
+from textual.containers import Center
 
 class TelaLogin(Screen):
 
@@ -12,11 +13,16 @@ class TelaLogin(Screen):
 
     def compose(self):
         yield Header()
-        yield Static("Nome:")
-        yield Input(placeholder="Nome aqui", id="usuario")
-        yield Static("Cor do nome:")
-        yield ColorPicker()
-        yield Button("Entrar")
+        with Center():
+            yield Static("Nome:")
+        with Center():
+            yield TextArea(placeholder="Nome aqui", id="usuario")
+        with Center():
+            yield Static("Cor do nome:")
+        with Center():
+            yield ColorPicker()
+        with Center():
+            yield Button("Entrar")
         yield Footer()
 
     nome = ""
@@ -28,9 +34,10 @@ class TelaLogin(Screen):
 
     def on_button_pressed(self):
         carregar_users = Banco.carregar("banco.db", "usuarios") or {}
-        nome_input = self.query_one("#usuario", Input).value.strip()
+        nome_input = self.query_one("#usuario", TextArea).text
 
         cor = self.query_one(ColorPicker).color
+        agora = int(time.time())
 
         if carregar_users and cor:
                 for user in carregar_users.values():
@@ -50,7 +57,6 @@ class TelaLogin(Screen):
             self.notify("ERRO! Valor inválido")
             return
 
-        agora = int(time.time())
 
         
         if carregar_users and nome_input in carregar_users.keys():
