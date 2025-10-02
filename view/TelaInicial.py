@@ -131,10 +131,10 @@ class TelaInicial(Screen):
                                 "container_foto")
                             container.mount(imagem_static, before=0)
                             self.usuario.set_pixel_perfil(imagem_static)
-                            self.users[self.usuario.get_nome()
-                                    ] = self.usuario
+                            carregar_users = Banco.carregar("banco.db", "usuarios")
+                            carregar_users[self.usuario.get_nome()] = self.usuario
                             Banco.salvar(
-                                "banco.db", "usuarios", self.users)
+                                "banco.db", "usuarios", )
                         else:
                             raise Exception
                     except Exception as e:
@@ -211,24 +211,24 @@ class TelaInicial(Screen):
             self.atualizar_usuario()
             users = self.listar_usuarios()
             
-            encontrado = False
+            
 
             carregar_users = Banco.carregar("banco.db", "usuarios")
-            if carregar_users and carregar_users != self.users:
-                self.users = carregar_users
+            if carregar_users:
                 self.atualizar_lista_users(users)
 
             carregar_msgs = Banco.carregar("banco.db", "mensagens")
 
             if carregar_msgs:
+                encontrado = False
                 self.mensagens = carregar_msgs
 
                 for mensagem in self.mensagens:
 
                     stt_nome_autor = Static(
                         mensagem["autor"], classes="stt_usuario")
-                    if self.users[mensagem["autor"]].get_cor():
-                        stt_nome_autor.styles.color = self.users[mensagem["autor"]].get_cor(
+                    if carregar_users[mensagem["autor"]].get_cor():
+                        stt_nome_autor.styles.color = carregar_users[mensagem["autor"]].get_cor(
                         )
 
                     if "imagem" in mensagem.keys():
@@ -298,8 +298,7 @@ class TelaInicial(Screen):
                             "#vs_mensagens", VerticalScroll).query(Static))
 
                         for stt_exibido in lista:
-                            content = stt_exibido.content
-                            stt_exibido_conteudo = content.strip()
+                            stt_exibido_conteudo = stt_exibido.content.strip()
                             stt_nome_autor_conteudo = stt_nome_autor.content.strip()
 
                             if stt_exibido_conteudo == stt_nome_autor_conteudo:
@@ -336,7 +335,6 @@ class TelaInicial(Screen):
             self.usuario.set_tempo(agora)
             usuarios[self.usuario.get_nome()] = self.usuario
         Banco.salvar("banco.db", "usuarios", usuarios)
-        self.users = self.listar_usuarios()
 
     def atualizar_lista_users(self, users):
         lista = self.query_one("#lv_usuarios", ListView)

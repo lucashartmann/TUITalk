@@ -5,10 +5,11 @@ from textual.widgets import Button
 from textual_image.widget import Image as TextualImage
 from textual.timer import Timer
 import hashlib
+from rich_pixels import Pixels
 
 class Video(Widget):
 
-    def __init__(self, video_path, width=41, height=13, *args, **kwargs):
+    def __init__(self, video_path, width=41, height=13, pixel=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.captura_video = cv2.VideoCapture(video_path)
         self.width = width
@@ -17,6 +18,7 @@ class Video(Widget):
         self.paused = False
         self.styles.width = self.width
         self.styles.height = self.height
+        self.pixel = pixel
 
         leu_frame, frame = self.captura_video.read()
         if not leu_frame:
@@ -75,9 +77,13 @@ class Video(Widget):
 
         if img:
             h = hashlib.md5(frame[::10, ::10].tobytes()).hexdigest()
-            if getattr(self, "prev_hash", None) != h:
-                self.query_one(TextualImage).image = img
-                self.query_one(TextualImage).styles.width = "100%"
-                self.query_one(TextualImage).styles.height = "87%"
+            if self.prev_frame != h:
+                if self.pixel:
+                    pixels = Pixels.from_image(img)
+                    self.update(pixels)
+                else:
+                    self.query_one(TextualImage).image = img
+                    self.query_one(TextualImage).styles.width = "100%"
+                    self.query_one(TextualImage).styles.height = "87%"
                 self.prev_frame = img
         return True
