@@ -1,9 +1,10 @@
 import cv2
 from PIL import Image
 from textual.widget import Widget
-from textual.widgets import Button
+from textual.widgets import Button, Static
 from textual_image.widget import Image as TextualImage
 from textual.timer import Timer
+from textual.containers import VerticalGroup
 import hashlib
 from rich_pixels import Pixels
 
@@ -16,8 +17,6 @@ class Video(Widget):
         self.height = height
         self.timer: Timer | None = None
         self.paused = False
-        self.styles.width = self.width
-        self.styles.height = self.height
         self.pixel = pixel
 
         leu_frame, frame = self.captura_video.read()
@@ -27,25 +26,32 @@ class Video(Widget):
         self.frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         self.pil_img = Image.fromarray(frame).resize((width, height))
 
-        self.fps = self.captura_video.get(cv2.CAP_PROP_FPS) or 60
+        self.fps = self.captura_video.get(cv2.CAP_PROP_FPS) or 15
         self.interval = 1 / self.fps
         self.prev_frame = None
 
     def compose(self):
-        yield TextualImage(self.pil_img)
-        yield Button("▶️")
+        with VerticalGroup(id="video_container"):
+            if self.pixel == False:
+                yield TextualImage(self.pil_img)
+            else:
+                yield Static(Pixels.from_image(self.pil_img), id="video_pixels")
+            yield Button("▶️")
+            
+    def resizeImagem(self, imagem: Image.Image) -> Image.Image | None:
+        size = (self.width, self.height)
+        try:
+            imagem.thumbnail(size, Image.Resampling.LANCZOS)
+        except ValueError:
+            return None
+        return imagem
 
     def on_button_pressed(self):
         self.pause()
 
-    def on_mount(self):
-        self.query_one(TextualImage).styles.width = "100%"
-        self.query_one(TextualImage).styles.height = "87%"
-        self.query_one(Button).styles.height = 3
-        self.query_one(Button).styles.width = "100%"
         
     def start(self):
-        self.timer = self.set_interval(1/30, self.update_frame)
+        self.timer = self.set_interval(1/15, self.update_frame)
 
     def pause(self):
         if not self.timer:
@@ -68,22 +74,24 @@ class Video(Widget):
             return False
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
         frame = frame.astype("uint8")
 
         if frame.shape[2] == 4:
             frame = frame[:, :, :3]
 
+
         img = Image.fromarray(frame)
+        
+        img = self.resizeImagem(img)
 
         if img:
             h = hashlib.md5(frame[::10, ::10].tobytes()).hexdigest()
             if self.prev_frame != h:
                 if self.pixel:
                     pixels = Pixels.from_image(img)
-                    self.update(pixels)
+                    self.query_one(Static).update(pixels)
                 else:
                     self.query_one(TextualImage).image = img
-                    self.query_one(TextualImage).styles.width = "100%"
-                    self.query_one(TextualImage).styles.height = "87%"
                 self.prev_frame = img
         return True

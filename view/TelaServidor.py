@@ -8,11 +8,15 @@ from ngrok import ngrok
 
 from textual.screen import Screen
 from textual.widgets import Switch, Static, Pretty, Input
+from textual.binding import Binding
 
 from database import Banco
 
-
 class TelaServidor(Screen):
+    
+    BINDINGS = {
+        Binding("q", "self.app.exit()", "Encerrar")
+    }
 
     listener = ""
 
@@ -25,25 +29,18 @@ class TelaServidor(Screen):
     async def on_switch_changed(self, evento: Switch.Changed):
         if evento.value == True:
             if self.query_one(Input).value != "":
-                token = str(self.query_one(Input).value)
+                token = self.query_one(Input).value
                 Banco.salvar("banco.db", "chave_ngrok", token)
             else:
-                token = str(Banco.carregar("banco.db", "chave_ngrok"))
-                if not token:
-                    if self.query_one(Input).value == "":
-                        self.notify("ERRO! Chave do ngrok em branco")
-                        return
-                    else:
-                        token = str(self.query_one(Input).value)
-                        Banco.salvar("banco.db", "chave_ngrok", token)
-
+                token = Banco.carregar("banco.db", "chave_ngrok")
+        
             try:
                 ngrok.set_auth_token(token)
+                self.listener = await ngrok.forward(8000, authtoken_from_env=False)
             except:
-                self.notify("ERRO! ngrok.set_auth_token()")
+                self.notify(f"ERRO! Insira seu token no Input")
                 return
 
-            self.listener = await ngrok.forward(8000, authtoken_from_env=False)
             self.query_one(Pretty).update(self.listener.url())
             os.environ["TEXTUAL_RUN"] = "1"
             self.proc = subprocess.Popen(
@@ -79,6 +76,7 @@ class TelaServidor(Screen):
                 self.notify(f"Erro de conexão: {e}")
 
         else:
+            os.environ["TEXTUAL_RUN"] = "0"
             if self.listener:
                 self.listener.close()
 

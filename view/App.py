@@ -9,8 +9,9 @@ class App(App):
         "tela_inicial": TelaInicial.TelaInicial,
         "tela_servidor": TelaServidor.TelaServidor
     }
-
-    tela = "tela_servidor"
+    
+    tela = "tela_login"
+    servidor = False
 
     def on_mount(self):
-        self.push_screen(self.tela)
+            self.push_screen(self.tela)

@@ -12,15 +12,15 @@ from textual_image.widget import Image
 
 from database import Banco
 from model import Download, Usuario
-from view.widgets import Audio, Video
+from view.widgets import Audio, Video, Imagem
+from rich_pixels import Pixels
 
 from pydub import AudioSegment
 
 
-
 class TelaInicial(Screen):
     CSS_PATH = "css/TelaInicial.tcss"
-    
+
     mensagens = list()
     _poll_timer: Timer = None
     resultado = ""
@@ -51,10 +51,15 @@ class TelaInicial(Screen):
             match dados["tipo"]:
 
                 case "imagem":
-                    img = Image(dados["arquivo"], name=hash(dados["arquivo"]))
-                    img.styles.width = 38
-                    img.styles.height = 10
-                    img.styles.margin = (0, 0, 0, 3)
+                    if self.app.servidor == True:
+                        img = Imagem.Imagem(
+                            imagem=dados["arquivo"], name=hash(dados["arquivo"]))
+                    else:
+                        img = Image(dados["arquivo"],
+                                    name=hash(dados["arquivo"]))
+                        img.styles.width = 38
+                        img.styles.height = 10
+                        img.styles.margin = (0, 0, 0, 3)
 
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
                         nome_user_static, img)
@@ -97,8 +102,14 @@ class TelaInicial(Screen):
                                  self.mensagens)
 
                 case "video":
+                    if self.app.servidor == True:
+                        video = Video.Video(dados["_temp_path"], name=hash(
+                            dados["arquivo"]), pixel=True)
+                    else:
+                        video = Video.Video(
+                            dados["_temp_path"], name=hash(dados["arquivo"]))
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
-                        nome_user_static, Video.Video(dados["_temp_path"], name=hash(dados["arquivo"])))
+                        nome_user_static, video)
                     self.mensagens.append(
                         {"autor": self.usuario.get_nome(), "video": dados["_temp_path"], "id": hash(dados["arquivo"])})
                     Banco.salvar("banco.db", "mensagens",
@@ -116,7 +127,7 @@ class TelaInicial(Screen):
     def on_button_pressed(self):
         if self.usuario.get_nome():
             input_widget = self.query_one(TextArea)
-            
+
             if input_widget.text:
                 if self.montou_container_foto:
                     try:
@@ -130,11 +141,15 @@ class TelaInicial(Screen):
                             container = self.get_child_by_id(
                                 "container_foto")
                             container.mount(imagem_static, before=0)
+                            imagem_static.styles.width = 5
+                            imagem_static.styles.height = 5
                             self.usuario.set_pixel_perfil(imagem_static)
-                            carregar_users = Banco.carregar("banco.db", "usuarios")
-                            carregar_users[self.usuario.get_nome()] = self.usuario
+                            carregar_users = Banco.carregar(
+                                "banco.db", "usuarios")
+                            carregar_users[self.usuario.get_nome()
+                                           ] = self.usuario
                             Banco.salvar(
-                                "banco.db", "usuarios", )
+                                "banco.db", "usuarios", carregar_users)
                         else:
                             raise Exception
                     except Exception as e:
@@ -152,28 +167,31 @@ class TelaInicial(Screen):
                         self.notify(f"ERRO! {e}")
 
                 else:
-                    nome_user_static = Static(self.usuario.get_nome(), classes="stt_usuario")
+                    nome_user_static = Static(
+                        self.usuario.get_nome(), classes="stt_usuario")
                     if self.usuario.get_cor():
                         nome_user_static.styles.color = self.usuario.get_cor()
 
-                    nova_mensagem = Static(f"  {str(input_widget.text)}")
+                    nova_mensagem = Static(str(input_widget.text))
                     self.mensagens.append(
                         {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.text)})
+
                     Banco.salvar("banco.db", "mensagens", self.mensagens)
+
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
                         nome_user_static, nova_mensagem)
-            
+
             input_widget.clear()
 
     def on_click(self, evento: Click):
 
-        if str(evento.widget) == "HeaderTitle()":
-            if self.montou_container_foto:
-                container = self.get_child_by_id("container_foto")
-                container.remove()
-                self.montou_container_foto = False
+        # if str(evento.widget) == "HeaderTitle()":
+        #     if self.montou_container_foto:
+        #         container = self.get_child_by_id("container_foto")
+        #         container.remove()
+        #         self.montou_container_foto = False
 
-        elif isinstance(evento.widget, Static):
+        if isinstance(evento.widget, Static) and  not isinstance(evento.widget, Pixels) and not isinstance(evento.widget.content, Pixels):
             if "👤" in evento.widget.content:
                 ctt_foto = Container(id="container_foto")
                 ctt_foto.styles.layer = "above"
@@ -210,8 +228,6 @@ class TelaInicial(Screen):
 
             self.atualizar_usuario()
             users = self.listar_usuarios()
-            
-            
 
             carregar_users = Banco.carregar("banco.db", "usuarios")
             if carregar_users:
@@ -220,10 +236,10 @@ class TelaInicial(Screen):
             carregar_msgs = Banco.carregar("banco.db", "mensagens")
 
             if carregar_msgs:
-                encontrado = False
                 self.mensagens = carregar_msgs
 
                 for mensagem in self.mensagens:
+                    encontrado = False
 
                     stt_nome_autor = Static(
                         mensagem["autor"], classes="stt_usuario")
@@ -232,16 +248,29 @@ class TelaInicial(Screen):
                         )
 
                     if "imagem" in mensagem.keys():
-                        for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Image):
-                            if stt.name == mensagem["id"]:
-                                encontrado = True
-                                break
-                        if not encontrado:
-                            imagem_static = Image(
-                                mensagem["imagem"], name=mensagem["id"])
-                            imagem_static.styles.width = 38
-                            imagem_static.styles.height = 10
-                            imagem_static.styles.margin = (0, 0, 0, 3)
+                        if self.app.servidor == True:
+                            for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Static):
+                                if isinstance(stt, Pixels) or isinstance(stt.content, Pixels):
+                                    if stt.name == mensagem["id"]:
+                                        encontrado = True
+                                        break
+                        else:
+                            for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Image):
+                                if stt.name == mensagem["id"]:
+                                    encontrado = True
+                                    break
+                        
+                        if encontrado == False:
+                            if self.app.servidor == True:
+                                imagem_static = Imagem.Imagem(
+                                    mensagem["imagem"], name=mensagem["id"])
+                            else:
+                                imagem_static = Image(
+                                    mensagem["imagem"], name=mensagem["id"])
+                                imagem_static.styles.width = 38
+                                imagem_static.styles.height = 10
+                                imagem_static.styles.margin = (0, 0, 0, 3)
+
                             self.query_one("#vs_mensagens", VerticalScroll).mount(
                                 stt_nome_autor, imagem_static)
 
@@ -250,42 +279,45 @@ class TelaInicial(Screen):
                             if audio_exibidos.name == mensagem["id"]:
                                 encontrado = True
                                 break
-                        
-                        if not encontrado:
-                                buffer = mensagem["audio"]
-                                if not isinstance(buffer, bytes):
-                                    buffer.seek(0)
-                                    blob = buffer.read()
-                                else:
-                                    blob = mensagem["audio"]
 
-                                if blob[:4] == b'RIFF':
-                                    buffer = io.BytesIO(blob)
-                                    audio = wave.open(buffer, "rb")
-                                elif blob[:3] == b'ID3' or (blob[0] == 0xFF and (blob[1] & 0xE0) == 0xE0):
-                                    audio = AudioSegment.from_file(
-                                        io.BytesIO(blob), format="mp3")
-                                elif blob[:4] == b'OggS':
-                                    audio = AudioSegment.from_file(
-                                        io.BytesIO(blob), format="ogg")
-                                elif blob[:4] == b'fLaC':
-                                    audio = AudioSegment.from_file(
-                                        io.BytesIO(blob), format="flac")
-                                else:
-                                    return
-                                bar = Audio.Audio(
-                                    audio, mensagem["nome"], name=mensagem["id"])
-                                self.query_one("#vs_mensagens", VerticalScroll).mount(
-                                    stt_nome_autor, bar)
+                        if encontrado == False:
+                            buffer = mensagem["audio"]
+                            if not isinstance(buffer, bytes):
+                                buffer.seek(0)
+                                blob = buffer.read()
+                            else:
+                                blob = mensagem["audio"]
+
+                            if blob[:4] == b'RIFF':
+                                buffer = io.BytesIO(blob)
+                                audio = wave.open(buffer, "rb")
+                            elif blob[:3] == b'ID3' or (blob[0] == 0xFF and (blob[1] & 0xE0) == 0xE0):
+                                audio = AudioSegment.from_file(
+                                    io.BytesIO(blob), format="mp3")
+                            elif blob[:4] == b'OggS':
+                                audio = AudioSegment.from_file(
+                                    io.BytesIO(blob), format="ogg")
+                            elif blob[:4] == b'fLaC':
+                                audio = AudioSegment.from_file(
+                                    io.BytesIO(blob), format="flac")
+                            else:
+                                return
+                            bar = Audio.Audio(
+                                audio, mensagem["nome"], name=mensagem["id"])
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                stt_nome_autor, bar)
 
                     elif "video" in mensagem.keys():
                         for videos_exibidos in self.query_one("#vs_mensagens", VerticalScroll).query(Video.Video):
                             if videos_exibidos.name == mensagem["id"]:
                                 encontrado = True
                                 break
-                        if not encontrado:
-                            stt = Video.Video(
-                                mensagem["video"], name=mensagem["id"])
+                        if encontrado == False:
+                            if self.app.servidor == True:
+                                stt = Video.Video(mensagem["video"], name=mensagem["id"], pixel=True)
+                            else:
+                                stt = Video.Video(
+                                    mensagem["video"], name=mensagem["id"])
                             self.query_one("#vs_mensagens", VerticalScroll).mount(
                                 stt_nome_autor, stt)
 
@@ -296,19 +328,30 @@ class TelaInicial(Screen):
                         mensagem = Static(mensagem["mensagem"])
                         lista = list(self.query_one(
                             "#vs_mensagens", VerticalScroll).query(Static))
-
+                        
                         for stt_exibido in lista:
-                            stt_exibido_conteudo = stt_exibido.content.strip()
-                            stt_nome_autor_conteudo = stt_nome_autor.content.strip()
+                            content = stt_exibido.content
+                            if hasattr(content, 'strip') and isinstance(content, str) and not isinstance(stt_exibido.content, Pixels) and not isinstance(stt_exibido, Pixels):
+                                stt_exibido_conteudo = content.strip()
+                            else:
+                                break
 
+                            if not isinstance(stt_exibido.content, Pixels) and hasattr(stt_exibido.content, 'strip') and isinstance(stt_exibido.content, str):
+                                stt_nome_autor_conteudo = stt_nome_autor.content.strip()
+                            else:
+                                break
                             if stt_exibido_conteudo == stt_nome_autor_conteudo:
                                 index = lista.index(stt_exibido)
                                 if index + 1 < len(lista):
                                     depois = lista[index + 1]
-                                    if depois.content.strip() == mensagem.content.strip():
-                                        encontrado = True
+                                    if not isinstance(depois.content, Pixels) and hasattr(depois.content, 'strip') and isinstance(depois.content, str):
+                                        if depois.content.strip() == mensagem.content.strip():
+                                            encontrado = True
+                                            break
+                                    else:
                                         break
 
+    
                         if not encontrado:
                             self.query_one("#vs_mensagens", VerticalScroll).mount(
                                 stt_nome_autor, mensagem)
