@@ -57,6 +57,9 @@ class Video(Widget):
         self.timer = self.set_interval(1/15, self.update_frame)
 
     def pause(self):
+        if not self.captura_video.isOpened():
+            self.captura_video = cv2.VideoCapture(self.video_path)
+        
         if not self.timer:
             self.start()
         else:
@@ -73,7 +76,7 @@ class Video(Widget):
 
         leu_frame, frame = self.captura_video.read()
         if not leu_frame:
-            self.captura_video.release()
+            self.captura_video.set(cv2.CAP_PROP_POS_FRAMES, 0)
             return False
 
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

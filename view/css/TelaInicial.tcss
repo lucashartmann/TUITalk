@@ -41,7 +41,13 @@ ListView {
 }
 
 Audio, Video, Image {
-    margin: 0 0 0 6;
+    margin: 0 0 0 4;
+}
+
+Imagem {
+    background: yellow;
+    height: 15;
+    width: 33;
 }
 
 Video  {
