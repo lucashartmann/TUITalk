@@ -10,11 +10,9 @@ from rich_pixels import Pixels
 
 class Video(Widget):
 
-    def __init__(self, video_path, width=41, height=13, pixel=False, *args, **kwargs):
+    def __init__(self, video_path, pixel=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.captura_video = cv2.VideoCapture(video_path)
-        self.width = width
-        self.height = height
         self.timer: Timer | None = None
         self.paused = False
         self.pixel = pixel
@@ -24,9 +22,11 @@ class Video(Widget):
             raise ValueError("Não consegui abrir o vídeo")
 
         self.frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        self.pil_img = Image.fromarray(frame).resize((width, height))
+        self.pil_img = Image.fromarray(frame)
 
         self.fps = self.captura_video.get(cv2.CAP_PROP_FPS) or 15
+        if self.fps < 15:  
+            self.fps = 15
         self.interval = 1 / self.fps
         self.prev_frame = None
 
@@ -38,10 +38,13 @@ class Video(Widget):
                 yield Static(Pixels.from_image(self.pil_img), id="video_pixels")
             yield Button("▶️")
             
-    def resizeImagem(self, imagem: Image.Image) -> Image.Image | None:
-        size = (self.width, self.height)
+    def resizeImagem(self,size, imagem: Image.Image) -> Image.Image | None:
         try:
-            imagem.thumbnail(size, Image.Resampling.LANCZOS)
+            if self.pixel:
+                size = (size[0]*1.10, size[1]*1.50)
+                imagem.thumbnail(size, Image.Resampling.LANCZOS)
+            else:
+                imagem.resize(size, Image.Resampling.LANCZOS)
         except ValueError:
             return None
         return imagem
@@ -83,7 +86,11 @@ class Video(Widget):
 
         img = Image.fromarray(frame)
         
-        img = self.resizeImagem(img)
+        widget = self.query_one("#video_container")
+        width = widget.size.width
+        height = widget.size.height
+        
+        img = self.resizeImagem((width, height), img)
 
         if img:
             h = hashlib.md5(frame[::10, ::10].tobytes()).hexdigest()

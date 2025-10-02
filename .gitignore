@@ -8,6 +8,8 @@ mensagem.wav
 
 Teste.py
 
+utils/
+
 vercel/cache
 # Ignorar arquivos de cache
 __pycache__/
