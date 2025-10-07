@@ -11,6 +11,7 @@ import sys
 import tempfile
 from typing import Any
 
+import aiohttp
 import aiohttp_jinja2
 from aiohttp import web
 from aiohttp import WSMsgType
@@ -27,7 +28,7 @@ from textual_serve.download_manager import DownloadManager
 
 from .app_service import AppService
 
-from view.TelaInicial import TelaInicial
+from database import Banco
 import queue
 
 active_websockets = []
@@ -154,7 +155,11 @@ class Server:
                 f.write(blob)
 
             try:
-                TelaInicial.salvar(blob)
+                chamada_em_curso = Banco.carregar(
+                    "banco.db", "chamada_em_curso")
+                chamada_em_curso[self.usuario.get_nome()] = blob
+                Banco.salvar("banco.db", "chamada_em_curso", chamada_em_curso)
+
             except Exception as e:
                 print("Erro ao salvar no TelaInicial:", e)
 
@@ -165,6 +170,27 @@ class Server:
             traceback.print_exc()
             return web.json_response({"status": "error", "message": str(e)}, status=500)
 
+    connected_clients = set()
+    ws_js = ""
+
+    async def handle_websocket_js(self, request):
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        # guarda referência do websocket para enviar mensagens depois
+        self.ws_js = ws
+
+        async for msg in ws:
+            # você pode ignorar mensagens do JS se não quiser receber nada
+            if msg.type == aiohttp.WSMsgType.TEXT:
+                print("Mensagem recebida do JS (opcional):", msg.data)
+            elif msg.type == aiohttp.WSMsgType.ERROR:
+                print('WS connection closed with exception %s' % ws.exception())
+
+
+    async def acao_externa(self, acao):
+        await self.web_meia.send_str(acao)
+       
     async def _make_app(self) -> web.Application:
         """Make the aiohttp web.Application.
 
@@ -178,7 +204,9 @@ class Server:
 
         ROUTES = [
             web.get("/", self.handle_index, name="index"),
+            web.get("/acao_python", self.acao_externa),
             web.post("/video_frame", self.video_frame_endpoint),
+            web.get("/ws_js", self.handle_websocket_js),  
             web.get("/ws", self.handle_websocket, name="websocket"),
             web.get("/download/{key}", self.handle_download, name="download"),
             web.static("/static", self.statics_path,
@@ -339,6 +367,10 @@ class Server:
                 await app_service.blur()
             elif type_ == "focus":
                 await app_service.focus()
+                
+    web_meia = ""
+    
+    
 
     async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
         """Handle the websocket that drives the remote process.
@@ -352,6 +384,7 @@ class Server:
             Websocket response.
         """
         websocket = web.WebSocketResponse(heartbeat=15)
+        self.web_meia = websocket
 
         width = to_int(request.query.get("width", "80"), 80)
         height = to_int(request.query.get("height", "24"), 24)

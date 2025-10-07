@@ -3,16 +3,17 @@ from PIL import Image
 from rich_pixels import Pixels
 from textual.widgets import Static
 from textual.timer import Timer
-from database import Banco
+
 
 class Caller(Static):
-    def __init__(self, **kwargs):
+    def __init__(self, pixel=True, *args, **kwargs):
         super().__init__(**kwargs)
         self.cap = None
         self.timer: Timer | None = None
         self.width = 30
         self.height = 30
         self.nome_user = ""
+        self.pixel = pixel
 
     def on_mount(self) -> None:
         self.cap = cv2.VideoCapture(0)
@@ -47,17 +48,11 @@ class Caller(Static):
         if img is None:
             return
 
-        pixels = Pixels.from_image(img)
-        self.update(pixels)
-        
-        
-        lista_dict = Banco.carregar("banco.db", "chamada_em_curso")
-        for dict in lista_dict:
-            for usuario, frame in dict.items():
-                if usuario == self.nome_user:
-                    frame = frame_rgb
-        
-        Banco.salvar("banco.db", "chamada_em_curso", lista_dict)
+        if self.pixel:
+            pixels = Pixels.from_image(img)
+            self.update(pixels)
+        # else:
+        #     self.query_one(TextualImage).image = img
 
     def on_unmount(self):
         if self.timer:
@@ -65,14 +60,16 @@ class Caller(Static):
         if self.cap and self.cap.isOpened():
             self.cap.release()
 
+
 class Receiver(Static):
-    def __init__(self, **kwargs):
+    def __init__(self, pixel=True, *args, **kwargs):
         super().__init__(**kwargs)
         self.cap = None
         self.timer: Timer | None = None
         self.width = 30
         self.height = 30
         self.nome_user = ""
+        self.pixel = pixel
 
     def on_mount(self) -> None:
         self.cap = cv2.VideoCapture(0)
@@ -98,13 +95,14 @@ class Receiver(Static):
         if img is None:
             return
 
-        pixels = Pixels.from_image(img)
-        self.update(pixels)
-        
-    
+        if self.pixel:
+            pixels = Pixels.from_image(img)
+            self.update(pixels)
+        # else:
+        #     self.query_one(TextualImage).image = img
+
     def on_unmount(self):
         if self.timer:
             self.timer.stop()
         if self.cap and self.cap.isOpened():
             self.cap.release()
-

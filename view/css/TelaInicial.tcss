@@ -46,7 +46,7 @@ Audio, Video, Image {
 
 Imagem {
     background: yellow;
-    height: 15;
+    height: 19;
     width: 33;
 }
 
@@ -78,4 +78,21 @@ Video #video_pixels {
     margin-left: 0;
     margin-top: 0;
     background: orange;
+}
+
+ContainerFoto {
+    layer: above;
+    width: 44%;
+    height: 40%;
+    align: center middle;
+}
+
+#stt_foto_perfil {
+    width: 30;
+    height: 30;
+}
+
+ContainerLigacao  Button {
+    height: 10;
+    width: 10;
 }

@@ -119,46 +119,109 @@
     }
 
     (async function () {
-        let stream = null;
-        let canvas = document.createElement('canvas');
-        let ctx = canvas.getContext('2d');
-        let video = document.createElement('video');
-        let intervalId = null;
+      let stream = null;
+      let canvas = document.createElement('canvas');
+      let ctx = canvas.getContext('2d');
+      let video = document.createElement('video');
+      let intervalId = null;
 
-        window.startCamera = async function () {
-            stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            video.srcObject = stream;
-            video.play();
-            video.onloadedmetadata = () => {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                startSending();
-            };
-        };
 
-        function startSending() {
-            const baseUrl = window.location.origin;
-            intervalId = setInterval(() => {
-                ctx.drawImage(video, 0, 0);
-                canvas.toBlob(blob => {
-                    const fd = new FormData();
-                    fd.append('frame', blob, 'frame.jpg');
-                    fetch('/video_frame', { method: 'POST', body: fd })
-                        .then(resp => resp.json())
-                        .then(data => console.log('Frame enviado:', data))
-                        .catch(console.error);
-                }, 'image/jpeg', 0.8);
-            }, 100);
-        }
+      const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(`${protocol}://${window.location.host}/ws_js`);
+      console.log("🧠 WebSocket URL:", `${ws.url}`);
 
-        window.stopCamera = function () {
-            if (intervalId) clearInterval(intervalId);
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        };
 
-        // Exemplo: Adicione um botão na UI Textual para chamar isso (via postMessage ou similar)
-        console.log("✅ Câmera pronta: chame startCamera() / stopCamera()");
+      ws.onopen = () => {
+        console.log("🟢 WebSocket aberto no navegador!");
+        ws.send("Hello server!");
+      };
+
+      ws.onmessage = async (event) => {
+        console.log("📩 Recebido do servidor:", event.data);
+      };
+
+
+
+
+      // ws.onmessage = async (event) => {
+      //   console.log("dps de ws.onmessage = async (event) => {:", (event.data).trim())
+
+      //   if (typeof event.data === "string") {
+
+      //     acao = event.data.trim();
+      //     console.log("acao = removeAnsiCodes(event.data).trim();", acao);
+      //   } else if (event.data instanceof Blob) {
+      //     acao = await event.data.text().trim();
+      //   } else if (event.data instanceof ArrayBuffer) {
+      //     acao = new TextDecoder().decode(event.data).trim();
+      //   }
+
+
+      //   switch (acao) {
+      //     case "stop_video":
+      //     case "stop_audio":
+      //       console.log("Ação recebida:", acao);
+      //       stopMedia();
+      //       break;
+
+      //     case "video":
+      //       console.log("Ação recebida:", acao);
+      //       await startCamera();
+      //       break;
+
+      //     case "audio":
+      //       console.log("Ação recebida:", acao);
+      //       await startAudio();
+      //       break;
+
+      //     default:
+      //       break;
+      //   }
+      // };
+
+      // async function startCamera() {
+      //   console.log("Iniciando câmera...");
+      //   stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      //   video.srcObject = stream;
+      //   video.play();
+
+      //   video.onloadedmetadata = () => {
+      //     canvas.width = video.videoWidth;
+      //     canvas.height = video.videoHeight;
+      //     startSending();
+      //   };
+      // }
+
+      // async function startAudio() {
+      //   console.log("Iniciando microfone...");
+      //   stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      //   const audio = document.createElement('audio');
+      //   audio.srcObject = stream;
+      //   audio.play();
+      // }
+
+      // function startSending() {
+      //   console.log("Enviando frames...");
+      //   intervalId = setInterval(() => {
+      //     ctx.drawImage(video, 0, 0);
+      //     canvas.toBlob(blob => {
+      //       const fd = new FormData();
+      //       fd.append('frame', blob, 'frame.jpg');
+      //       fetch('/video_frame', { method: 'POST', body: fd })
+      //         .then(resp => resp.json())
+      //         .then(data => console.log('Frame enviado:', data))
+      //         .catch(console.error);
+      //     }, 'image/jpeg', 0.8);
+      //   }, 100);
+      // }
+
+      // function stopMedia() {
+      //   console.log("Parando câmera/microfone...");
+      //   if (intervalId) clearInterval(intervalId);
+      //   if (stream) stream.getTracks().forEach(t => t.stop());
+      // }
     })();
+
   </script>
 </head>
 

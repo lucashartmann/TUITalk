@@ -14,12 +14,14 @@ from database import Banco
 
 
 class TelaServidor(Screen):
+    
 
     BINDINGS = {
         Binding("q", "self.app.exit()", "Encerrar")
     }
 
     listener = ""
+    proc = None
 
     def compose(self):
         yield Input(placeholder="auth_token do ngrok")
@@ -44,10 +46,14 @@ class TelaServidor(Screen):
                 return
 
             self.query_one(Pretty).update(self.listener.url())
+            Banco.salvar("ngrok.db", "url", self.listener.url())
             os.environ["TEXTUAL_RUN"] = "1"
-            self.proc = subprocess.Popen(
+            TelaServidor.proc = subprocess.Popen(
                 f'start cmd /k "cd C:\\Users\\dudua\\Music\\Projetos\\TextualMessage && python Serve.py {self.listener.url()}"',
-                shell=True
+                shell=True,
+                stdin=subprocess.PIPE,   # necessário para escrever no subprocess
+                stdout=subprocess.PIPE,  # opcional, se quiser ler logs
+                text=True                # importante para strings
             )
 
             await asyncio.sleep(1)
