@@ -1,11 +1,38 @@
 TelaLogin {
-    background: rgba(40, 67, 88, 1);
+    background: rgba(87, 156, 209, 1);
     align: center middle;
-    color: black;
-    width: 100%;
 }
 
-Input {
-    width: 50%;
+TelaLogin Static {
+    text-align: center;
+    margin-bottom: 2;
+    color: black;
+}
+
+TelaLogin Button {
+    width: auto;
+    min-width: 50%;
+}
+
+TelaLogin TextArea {
     margin: 2;
+    width: 50%;
+    height: auto;
+    color: white;
+}
+
+ColorPicker {
+    background: black;
+    margin-bottom: 2;
+    width: auto;
+}
+
+ColorPicker Static, ColorPicker Input {
+    display: none;
+}
+
+ColorPicker VerticalGroup {
+    width: 40;
+    height: 21;
+    align: center middle;
 }

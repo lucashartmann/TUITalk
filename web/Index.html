@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TextualMessage</title>
+    <link rel="stylesheet" href="Style.css">
+</head>
+
+<body>
+    <div id="status">
+        <div id="message">⚠️ Servidor fora do ar</div>
+        <div id="redirecting" style="display: none;">Redirecionando...</div>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+        const messageDiv = document.getElementById('message');
+        const redirectingDiv = document.getElementById('redirecting');
+
+        async function getRedirectUrl() {
+            try {
+
+
+                console.log('Fazendo requisição para /api/url...');
+
+                let response = await fetch('/api/storage?' + Date.now(), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                });
+
+                if (!response.ok) {
+                    console.log('Storage falhou, tentando endpoint original...');
+                    response = await fetch('/api/url?' + Date.now(), {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache'
+                        }
+                    });
+                }
+
+                console.log('Resposta recebida:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Dados recebidos:', data);
+
+                if (data.redirect) {
+                    messageDiv.style.display = 'none';
+                    redirectingDiv.style.display = 'block';
+
+                    console.log('Redirecionando para:', data.redirect);
+
+                    setTimeout(() => {
+                        window.location.href = data.redirect;
+                    }, 1000);
+                } else {
+
+                    console.log('Servidor ainda não está pronto, tentando novamente em 3s...');
+
+                    setTimeout(getRedirectUrl, 3000);
+                }
+            } catch (error) {
+                console.error('Erro ao conectar:', error);
+
+                setTimeout(getRedirectUrl, 5000);
+            }
+        }
+
+        // Inicia a verificação
+        getRedirectUrl();
+    </script>
+</body>
+
+</html>
