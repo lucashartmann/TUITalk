@@ -6,16 +6,15 @@ from textual.events import Key
 from textual.timer import Timer
 from textual.events import Click
 from database import Banco
-import time
-from model import Audio, Imagem
-import wave
-from view import TelaSelecionar
-from pydub import AudioSegment
-import io
-from PIL import Image
+from model import Download, Usuario
+from view.widgets import Audio, Video, Imagem, ChamadaVideo
 from rich_pixels import Pixels
 
 from view.widgets import ChamadaVideo, Video
+
+
+from textual_filedrop import getfiles
+from textual_filedrop import FileDrop
 
 
 class TelaInicial(Screen):
@@ -138,18 +137,9 @@ class TelaInicial(Screen):
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
 
-    async def on_click(self, evento: Click):
-        if isinstance(evento.widget, Static):
-            if "▶︎" in evento.widget.content:
-                arquivo = self.audios[evento.widget.name]
-                self.audio.tocar_audio(arquivo)
-            if evento.widget.id == "selecionar_arquivo":
-                await self.mount(TelaSelecionar.TelaSelecionar())
-        if evento.widget.parent.parent.id == "lv_usuarios":
-            if isinstance(evento.widget, Static):
-                if "📞" in evento.widget.content:
-                    Banco.salvar("banco.db", "chamada", {
-                        self.nome_user: evento.widget.content[2:-2]})
+    async def on_button_pressed(self, event: Button.Pressed):
+        if self.usuario.get_nome():
+            input_widget = self.query_one(TextArea)
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "gravar":
@@ -190,8 +180,29 @@ class TelaInicial(Screen):
                 Banco.salvar("banco.db", "chamata_atendida", True)
                 self.ligacao()
 
-        # elif event.button.id == "play":
-        #     self.audio.play_audio()
+                elif event.button.id == "bt_ligacao_true" or event.button.id == "bt_ligacao_false":
+                    await self.query_one("#container_call", Container).remove()
+                    Banco.deletar("banco.db", "chamada")
+                    Banco.salvar("banco.db", "chamada_atentida", False)
+                    if event.button.id == "bt_ligacao_true":
+                        self.atendeu = True
+                        Banco.salvar("banco.db", "chamada_atentida", True)
+                    self.ligacao()
+
+                else:
+                    nome_user_static = Static(
+                        self.usuario.get_nome(), classes="stt_usuario")
+                    if self.usuario.get_cor():
+                        nome_user_static.styles.color = self.usuario.get_cor()
+
+                    nova_mensagem = Static(str(input_widget.text))
+                    self.mensagens.append(
+                        {"autor": self.usuario.get_nome(), "mensagem": str(input_widget.text)})
+
+                    Banco.salvar("banco.db", "mensagens", self.mensagens)
+
+                    self.query_one("#vs_mensagens", VerticalScroll).mount(
+                        nome_user_static, nova_mensagem)
 
     def on_key(self, event: Key):
         if event.key == "enter" and self.nome_user:
@@ -203,6 +214,37 @@ class TelaInicial(Screen):
             Banco.salvar("banco.db", "mensagens", self.mensagens)
             self.query_one(TextArea).mount(nova_mensagem)
             input_widget.clear()
+
+    def on_click(self, evento: Click):
+
+        # if str(evento.widget) == "HeaderTitle()":
+        #     if self.montou_container_foto:
+        #         container = self.get_child_by_id("container_foto")
+        #         container.remove()
+        #         self.montou_container_foto = False
+
+        if evento.widget.parent.parent.id == "lv_usuarios":
+            if isinstance(evento.widget, Static) and not isinstance(evento.widget, Pixels) and not isinstance(evento.widget.content, Pixels):
+                if "📞" in evento.widget.content:
+                    Banco.salvar("banco.db", "chamada", {
+                        self.usuario.get_nome(): evento.widget.content[2:-2]})
+
+                elif "👤" in evento.widget.content:
+
+                    ctt_foto = Container(id="container_foto")
+                    ctt_foto.styles.layer = "above"
+                    ctt_foto.styles.width = "44%"
+                    ctt_foto.styles.height = "40%"
+                    ctt_foto.styles.align = ("center", "middle")
+                    self.mount(ctt_foto)
+                    ctt_foto.mount(Header(show_clock=False))
+                    # ctt_foto.get_child_by_type(Header).
+                    ctt_foto.mount(
+                        Input(placeholder="caminho da foto"))
+                    self.montou_container_foto = True
+                # else:
+                #     documento = self.documentos[evento.widget.name]
+                # TODO: abrir documento, ou abrir foto dele montou_container_foto
 
     def on_mount(self):
         users = self.listar_usuarios()
@@ -308,28 +350,30 @@ class TelaInicial(Screen):
 
     montou_ligacao = False
     montou_caller = False
-    salvou = False
+
+    def salvar(self, frame):
+
+        chamada_em_curso = Banco.carregar(
+            "banco.db", "chamada_em_curso")
+        chamada_em_curso[self.usuario.get_nome()] = frame
+        Banco.salvar("banco.db", "chamada_em_curso", chamada_em_curso)
 
     def ligacao(self):
-        if not self.salvou:
-            self.chamada_em_curso.append({self.nome_user: ""})
-            Banco.salvar("banco.db", "chamada_em_curso", self.chamada_em_curso)
-            self.salvou = True
 
         if self.montou_ligacao:
             container = self.get_child_by_id(
                 "container_ligacao_em_curso")
 
-            self.chamada_em_curso = Banco.carregar(
+            chamada_em_curso = Banco.carregar(
                 "banco.db", "chamada_em_curso")
 
-            if len(self.chamada_em_curso) > 1:
+            if len(chamada_em_curso) > 1:
 
-                for dict in self.chamada_em_curso:
-                    for usuario, frame in dict.items():
-                        if usuario != self.nome_user:
-                            caller = usuario
-                            frame = frame
+                for usuario, frame in chamada_em_curso.items():
+                    if usuario != self.usuario.get_nome():
+                        caller = usuario
+                        frame = frame
+                        break
 
                 if not self.montou_caller:
                     receiver = ChamadaVideo.Receiver(id=caller)
@@ -338,7 +382,6 @@ class TelaInicial(Screen):
                 else:
                     camera_caller = container.get_child_by_id(caller)
                     camera_caller.update_frame(frame)
-            
 
         else:
             container = Container(id="container_ligacao_em_curso")
@@ -347,8 +390,8 @@ class TelaInicial(Screen):
             botao_desligar.styles.height = 10
             botao_desligar.styles.width = 10
             container.mount(botao_desligar)
-            stt_video = ChamadaVideo.Caller(id=self.nome_user)
-            stt_video.nome_user = self.nome_user
+            stt_video = ChamadaVideo.Caller(id=self.usuario.get_nome())
+            stt_video.nome_user = self.usuario.get_nome()
             container.mount(stt_video)
             self.montou_ligacao = True
 
@@ -374,6 +417,21 @@ class TelaInicial(Screen):
             if chamda_atendida:
                 self.ligacao()
 
+            chamada = Banco.carregar("banco.db", "chamada")
+            if chamada:
+                if self.usuario.get_nome() in chamada.values() and not self.montou_notificacao:
+                    container = Container(id="container_call")
+                    self.mount(container)
+                    container.mount(
+                        Static(F"{chamada.keys()} está te ligando! Aceitar?"))
+                    container.mount(Button("Sim", id="bt_ligacao_true"))
+                    container.mount(Button("Não", id="bt_ligacao_false"))
+                    self.montou_notificacao = True
+
+            chamada_atendida = Banco.carregar("banco.db", "chamada_atentida")
+            if chamada_atendida:
+                self.ligacao()
+
             self.atualizar_usuario()
             users = self.listar_usuarios()
 
@@ -388,16 +446,38 @@ class TelaInicial(Screen):
                 encontrado = False
                 for mensagem in self.mensagens:
 
-                    if "pixel" in mensagem.keys():
-                        nome = Static(mensagem["autor"])
-                        imagem_static = Static(
-                            mensagem["pixel"], name=mensagem["id"])
-                        for stt in self.query_one(TextArea).query(Static):
-                            if stt.name == imagem_static.name:
-                                encontrado = True
-                                break
-                        if not encontrado:
-                            self.query_one(TextArea).mount(nome, imagem_static)
+                    stt_nome_autor = Static(
+                        mensagem["autor"], classes="stt_usuario")
+                    if carregar_users[mensagem["autor"]].get_cor():
+                        stt_nome_autor.styles.color = carregar_users[mensagem["autor"]].get_cor(
+                        )
+
+                    if "imagem" in mensagem.keys():
+                        if self.app.servidor == True:
+                            for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Static):
+                                if isinstance(stt, Pixels) or isinstance(stt.content, Pixels):
+                                    if stt.name == mensagem["id"]:
+                                        encontrado = True
+                                        break
+                        else:
+                            for stt in self.query_one("#vs_mensagens", VerticalScroll).query(Image):
+                                if stt.name == mensagem["id"]:
+                                    encontrado = True
+                                    break
+
+                        if encontrado == False:
+                            if self.app.servidor == True:
+                                imagem_static = Imagem.Imagem(
+                                    mensagem["imagem"], name=mensagem["id"])
+                            else:
+                                imagem_static = Image(
+                                    mensagem["imagem"], name=mensagem["id"])
+                                imagem_static.styles.width = 38
+                                imagem_static.styles.height = 10
+                                imagem_static.styles.margin = (0, 0, 0, 3)
+
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                stt_nome_autor, imagem_static)
 
                     elif "audio" in mensagem.keys():
                         stt = Static(
@@ -457,20 +537,46 @@ class TelaInicial(Screen):
                             if stt.name == stt.name:
                                 encontrado = True
                                 break
-                        if not encontrado:
-                            self.query_one(TextArea).mount(nome, stt)
-                        pass
+                        if encontrado == False:
+                            if self.app.servidor == True:
+                                stt = Video.Video(
+                                    mensagem["video"], name=mensagem["id"], pixel=True)
+                            else:
+                                stt = Video.Video(
+                                    mensagem["video"], name=mensagem["id"])
+                            self.query_one("#vs_mensagens", VerticalScroll).mount(
+                                stt_nome_autor, stt)
 
                     elif "documento":
                         self.documentos[mensagem["id"]] = mensagem["documento"]
 
                     else:
-                        stt = Static(
-                            f"{mensagem["autor"]}\n  {mensagem["mensagem"]}\n")
-                        for stt_exibido in self.query_one(TextArea).query(Static):
-                            if stt.content == stt_exibido.content:
-                                encontrado = True
+                        mensagem = Static(mensagem["mensagem"])
+                        lista = list(self.query_one(
+                            "#vs_mensagens", VerticalScroll).query(Static))
+
+                        for stt_exibido in lista:
+                            content = stt_exibido.content
+                            if hasattr(content, 'strip') and isinstance(content, str) and not isinstance(stt_exibido.content, Pixels) and not isinstance(stt_exibido, Pixels):
+                                stt_exibido_conteudo = content.strip()
+                            else:
                                 break
+
+                            if not isinstance(stt_exibido.content, Pixels) and hasattr(stt_exibido.content, 'strip') and isinstance(stt_exibido.content, str):
+                                stt_nome_autor_conteudo = stt_nome_autor.content.strip()
+                            else:
+                                break
+                            if stt_exibido_conteudo == stt_nome_autor_conteudo:
+                                index = lista.index(stt_exibido)
+                                if index + 1 < len(lista):
+                                    depois = lista[index + 1]
+                                    if not isinstance(depois.content, Pixels) and hasattr(depois.content, 'strip') and isinstance(depois.content, str):
+                                        if depois.content.strip() == mensagem.content.strip():
+                                            encontrado = True
+                                            break
+                                    else:
+                                        break
+
                         if not encontrado:
                             self.query_one(TextArea).mount(stt)
 
@@ -480,10 +586,11 @@ class TelaInicial(Screen):
             usuarios = Banco.carregar("banco.db", "usuarios")
             ativos = {}
             for chave, valor in usuarios.items():
-                if agora - valor <= 60:
-                    ativos[f"🟢 {chave} 📞"] = valor
-                else:
-                    ativos[f"🔴 {chave}"] = valor
+                if valor:
+                    if agora - valor.get_tempo() <= 60:
+                        ativos[f"👤 🟢 {chave} 📞"] = valor
+                    else:
+                        ativos[f"👤 🔴 {chave}"] = valor
             return ativos
 
     def atualizar_usuario(self):

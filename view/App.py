@@ -3,6 +3,8 @@ from view import TelaInicial, TelaLogin
 
 
 class App(App):
+    
+    
 
     SCREENS = {
         "tela_login": TelaLogin.TelaLogin,

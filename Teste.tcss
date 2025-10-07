@@ -1,0 +1,12 @@
+ModalScreen {
+    background: transparent;
+}
+
+Container {
+    background: transparent;
+    width: 20;
+    height: 20;
+}
+Static {
+    color: yellow;
+}
