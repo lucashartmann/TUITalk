@@ -1,4 +1,4 @@
-TelaInicial {
+TelaInicial, Screen {
     background: rgba(255, 170, 44, 1);
     layers: below above;
 }
@@ -92,22 +92,40 @@ ContainerFoto, ContainerMessageLigacao {
     height: 30;
 }
 
-ContainerLigacao  Button {
-    height: 10;
-    width: 10;
-}
-
 ContainerLigacao {
-    width: 70%;
-    height: 70%;
+    width: 60%;
+    height: 60%;
+    background: rgba(41, 39, 39, 1) 90%;
 }
 
-ContainerLigacao ChamadaVideo{
-    width: 50;
-    height: 50;
+ContainerLigacao  Button {
+    height: 3;
+    background: 15% purple;
+    border: none;
 }
 
-ChamadaVideo {
-    width: 50;
-    height: 50;
+ContainerLigacao  #titulo {
+    width: 78%;
+    text-align: center;
+    background: rgba(116, 83, 83, 1);
+    border: round black 100%;
 }
+
+ContainerLigacao Call {
+    background: rgba(110, 75, 75, 1);
+    width: 49%;
+    height: 82%;
+    margin: 1;
+    color: black;
+}
+
+ContainerLigacao HorizontalGroup{
+    width: 100%;
+    height: 100%;
+}
+
+ContainerLigacao Horizontal {
+    width: 100%;
+    height: 3;
+}
+

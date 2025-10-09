@@ -6,13 +6,14 @@ import io
 
 from textual.screen import Screen
 from textual.widgets import Input, TextArea, Button, Static, ListItem, ListView, Header, Footer
-from textual.containers import HorizontalScroll, VerticalScroll, HorizontalGroup, Container
+from textual.containers import HorizontalScroll, Horizontal, VerticalScroll, HorizontalGroup, Container
 from textual.timer import Timer
 from textual.events import Click
 
 from textual_image.widget import Image
-from textual_filedrop import FileDrop
-from textual_filedrop import getfiles
+# from textual_filedrop import FileDrop
+# from textual_filedrop import getfiles
+
 import websockets
 
 from database import Banco
@@ -76,7 +77,9 @@ class ContainerLigacao(Container):
         self.styles.layer = "above"
 
     def compose(self):
-        yield Button("❌")
+        with Horizontal():
+            yield Button("❌")
+            yield Static("ᑕᕼᗩᗰᗩᗪᗩ", id="titulo")
         with HorizontalGroup():
             pass
 
@@ -146,7 +149,7 @@ class TelaInicial(Screen):
                                 "banco.db", "chamada_em_curso", chamada_em_curso)
             except Exception as e:
                 print(f"Erro na conexão WebSocket: {e}")
-                await asyncio.sleep(1)  
+                await asyncio.sleep(1)
 
     def start_receber_frames(self):
         loop = asyncio.get_event_loop()
@@ -375,42 +378,7 @@ class TelaInicial(Screen):
                 # TODO: abrir documento, ou abrir foto dele montou_container_foto
 
     def ligacao(self):
-        if not self.montou_ligacao:
-            return
-
-        container = self.query_one(ContainerLigacao)
-        minha_camera = container.query_one(
-            HorizontalGroup).get_child_by_id(self.usuario.get_nome())
-        minha_camera.update_frame(self.frame_recebido)
-
-        chamada_em_curso = Banco.carregar("banco.db", "chamada_em_curso")
-        if not chamada_em_curso:
-            return
-
-        try:
-            for usuario, frame in chamada_em_curso.items():
-                if usuario != self.usuario.get_nome():
-                    caller = usuario
-                    frame_caller = frame
-                    break
-            else:
-                return
-
-            if not self.montou_caller:
-                if self.app.servidor:
-                    receiver = ChamadaVideo.Call(id=caller, pixel=True)
-                    receiver.update_frame(frame_caller)
-                    container.query_one(HorizontalGroup).mount(receiver)
-                    self.montou_caller = True
-            else:
-                camera_caller = container.query_one(
-                    HorizontalGroup).get_child_by_id(caller)
-                camera_caller.update_frame(frame_caller)
-
-        except Exception as e:
-            print(f"Erro em ligacao(): {e}")
-
-        else:
+        if self.montou_ligacao == False:
             Banco.salvar("banco.db", "acao", "video")
             self.start_receber_frames()
             container = ContainerLigacao()
@@ -422,6 +390,37 @@ class TelaInicial(Screen):
                 stt_video.update_frame(self.frame_recebido)
             container.query_one(HorizontalGroup).mount(stt_video)
             self.montou_ligacao = True
+        else:
+            container = self.query_one(ContainerLigacao)
+            minha_camera = container.query_one(
+                HorizontalGroup).get_child_by_id(self.usuario.get_nome())
+            minha_camera.update_frame(self.frame_recebido)
+
+            chamada_em_curso = Banco.carregar("banco.db", "chamada_em_curso")
+            if not chamada_em_curso:
+                return
+
+            try:
+                for usuario, frame in chamada_em_curso.items():
+                    if usuario != self.usuario.get_nome():
+                        caller = usuario
+                        frame_caller = frame
+                        break
+                else:
+                    return
+
+                if not self.montou_caller:
+                    receiver = ChamadaVideo.Call(id=caller, pixel=True)
+                    receiver.update_frame(frame_caller)
+                    container.query_one(HorizontalGroup).mount(receiver)
+                    self.montou_caller = True
+                else:
+                    camera_caller = container.query_one(
+                        HorizontalGroup).get_child_by_id(caller)
+                    camera_caller.update_frame(frame_caller)
+
+            except Exception as e:
+                print(f"Erro em ligacao(): {e}")
 
     def poll_dados(self):
 

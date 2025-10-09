@@ -46,7 +46,7 @@ class TelaServidor(Screen):
             Banco.salvar("ngrok.db", "url", self.listener.url())
             os.environ["TEXTUAL_RUN"] = "1"
             self.proc = subprocess.Popen(
-                f'start cmd /k "cd C:\\Users\\dudua\\Music\\Projetos\\TextualMessage && python Serve.py {self.listener.url()}"',
+                f'start cmd /k "cd {os.getcwd()} && python Serve.py {self.listener.url()}"',
                 shell=True,
                 creationflags=subprocess.CREATE_NEW_CONSOLE
             )

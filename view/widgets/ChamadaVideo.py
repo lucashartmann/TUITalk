@@ -14,6 +14,9 @@ class Call(Static):
         self.height = 30
         self.nome_user = ""
         self.pixel = pixel
+        
+    def on_mount(self):
+        self.update("Sem câmera")
 
     def resize_image(self, image: Image.Image):
         size = (self.width, self.height)
