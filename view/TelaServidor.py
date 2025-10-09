@@ -19,10 +19,7 @@ class TelaServidor(Screen):
     BINDINGS = {
         Binding("q", "self.app.exit()", "Encerrar")
     }
-
-    listener = ""
-    proc = None
-
+    
     def compose(self):
         yield Input(placeholder="auth_token do ngrok")
         yield Static("Ligar Servidor:")
@@ -48,12 +45,10 @@ class TelaServidor(Screen):
             self.query_one(Pretty).update(self.listener.url())
             Banco.salvar("ngrok.db", "url", self.listener.url())
             os.environ["TEXTUAL_RUN"] = "1"
-            TelaServidor.proc = subprocess.Popen(
+            self.proc = subprocess.Popen(
                 f'start cmd /k "cd C:\\Users\\dudua\\Music\\Projetos\\TextualMessage && python Serve.py {self.listener.url()}"',
                 shell=True,
-                stdin=subprocess.PIPE,   # necessário para escrever no subprocess
-                stdout=subprocess.PIPE,  # opcional, se quiser ler logs
-                text=True                # importante para strings
+                creationflags=subprocess.CREATE_NEW_CONSOLE
             )
 
             await asyncio.sleep(1)
@@ -99,7 +94,7 @@ class TelaServidor(Screen):
                 cmd = p.info['cmdline']
                 if cmd:
                     cmd_str = ' '.join(cmd).lower()
-                    if 'textual' in cmd_str or 'cmd.exe' in cmd_str:
+                    if "python serve.py" in cmd_str:
                         try:
                             p.terminate()
                         except Exception:

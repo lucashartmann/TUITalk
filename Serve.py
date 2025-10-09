@@ -12,16 +12,5 @@ servidor = Server(
     public_url=comando[-1] 
 )
 
-async def escutar_comandos(server):
-    while True:
-        print("escutar_comandos() chamado")
-        cmd = sys.stdin.readline().strip()
-        if hasattr(server, "ws_js") and server.ws_js is not None:
-            print("server.ws_js tudo certo")
-            await server.ws_js.send_str(cmd)  # envia para o JS
-        print("server.ws_js nao esta certo")
-        await asyncio.sleep(0.01)  # ev
-
-
 servidor.serve() 
 

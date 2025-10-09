@@ -1,6 +1,6 @@
 from textual.app import App
 from view import TelaInicial, TelaLogin, TelaServidor
-
+from database import Banco
 
 class App(App):
     

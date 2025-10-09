@@ -80,11 +80,11 @@ Video #video_pixels {
     background: orange;
 }
 
-ContainerFoto {
+ContainerFoto, ContainerMessageLigacao {
     layer: above;
     width: 44%;
     height: 40%;
-    align: center middle;
+    dock: left;
 }
 
 #stt_foto_perfil {
@@ -95,4 +95,19 @@ ContainerFoto {
 ContainerLigacao  Button {
     height: 10;
     width: 10;
+}
+
+ContainerLigacao {
+    width: 70%;
+    height: 70%;
+}
+
+ContainerLigacao ChamadaVideo{
+    width: 50;
+    height: 50;
+}
+
+ChamadaVideo {
+    width: 50;
+    height: 50;
 }
