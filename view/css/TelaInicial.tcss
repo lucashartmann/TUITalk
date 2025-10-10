@@ -148,10 +148,25 @@ ContainerFoto {
     layer: above;
     width: 44%;
     height: 60%;
+    align: center middle;
+    text-align: center;
 }
 
 ContainerFoto Imagem{
     background: rgba(139, 78, 78, 1);
     height: 12;
-    width: 11;
+    width: 30;
+    margin: 2 0 2 0;
+}
+
+ContainerFoto Input{
+    width: auto;
+    min-width: 31;
+    max-width: 70%;
+    margin: 0 0 2 0;
+}
+
+ContainerFoto Button{
+    width: auto;
+    min-width: 30;
 }
