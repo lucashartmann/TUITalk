@@ -80,22 +80,12 @@ Video #video_pixels {
     background: orange;
 }
 
-ContainerFoto, ContainerMessageLigacao {
-    layer: above;
-    width: 44%;
-    height: 40%;
-    dock: left;
-}
-
-#stt_foto_perfil {
-    width: 30;
-    height: 30;
-}
 
 ContainerLigacao {
     width: 60%;
     height: 60%;
     background: rgba(41, 39, 39, 1) 90%;
+    layer: above;
 }
 
 ContainerLigacao  Button {
@@ -129,3 +119,39 @@ ContainerLigacao Horizontal {
     height: 3;
 }
 
+ContainerMessageLigacao {
+    background: rgba(110, 75, 75, 1);
+    width: 49%;
+    height: 20%;
+    dock: bottom;
+    layer: above;
+}
+
+ContainerMessageLigacao Static{
+    margin: 2;
+    text-align: center;
+}
+
+ContainerMessageLigacao Button {
+    margin: 1 2 2 2;
+}
+
+ContainerMessageLigacao HorizontalGroup {
+    width: 100%;
+    height: auto;
+    align: center middle;
+}
+
+
+ContainerFoto {
+    background: rgba(110, 75, 75, 1);
+    layer: above;
+    width: 44%;
+    height: 60%;
+}
+
+ContainerFoto Imagem{
+    background: rgba(139, 78, 78, 1);
+    height: 12;
+    width: 11;
+}

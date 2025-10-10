@@ -49,8 +49,7 @@ class ContainerFoto(Container):
                     else:
                         imagem_static = Image(
                             dados["arquivo"], id="stt_foto_perfil")
-                    container = self.screen.query_one(ContainerFoto)
-                    container.mount(imagem_static, before=Input)
+                    self.mount(imagem_static, before=self.query_one(Input))
                     self.screen.usuario.set_pixel_perfil(dados["arquivo"])
                     carregar_users = Banco.carregar(
                         "banco.db", "usuarios")
@@ -102,8 +101,9 @@ class ContainerMessageLigacao(Container):
 
     def compose(self):
         yield Static(F"está te ligando! Aceitar?")
-        yield Button("Sim", id="bt_ligacao_true")
-        yield Button("Não", id="bt_ligacao_false")
+        with HorizontalGroup():
+            yield Button("Sim", id="bt_ligacao_true")
+            yield Button("Não", id="bt_ligacao_false")
 
     async def on_button_pressed(self, evento: Button.Pressed):
         await self.remove()
