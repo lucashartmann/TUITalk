@@ -12,14 +12,14 @@ from textual.binding import Binding
 
 from database import Banco
 
+
 class TelaServidor(Screen):
     
+
     BINDINGS = {
         Binding("q", "self.app.exit()", "Encerrar")
     }
-
-    listener = ""
-
+    
     def compose(self):
         yield Input(placeholder="auth_token do ngrok")
         yield Static("Ligar Servidor:")
@@ -30,25 +30,25 @@ class TelaServidor(Screen):
         if evento.value == True:
             if self.query_one(Input).value != "":
                 token = self.query_one(Input).value
-                Banco.salvar("banco.db", "chave_ngrok", token)
+                Banco.salvar("ngrok.db", "chave_ngrok", token)
             else:
-                token = Banco.carregar("banco.db", "chave_ngrok")
-        
+                token = Banco.carregar("ngrok.db", "chave_ngrok")
+
             try:
                 ngrok.set_auth_token(token)
                 self.listener = await ngrok.forward(8000, authtoken_from_env=False)
+
             except:
                 self.notify(f"ERRO! Insira seu token no Input")
                 return
 
             self.query_one(Pretty).update(self.listener.url())
+            Banco.salvar("ngrok.db", "url", self.listener.url())
             os.environ["TEXTUAL_RUN"] = "1"
             self.proc = subprocess.Popen(
-                [
-                    "start", "cmd", "/k",
-                    f"textual serve Main.py --port 8000 --host 0.0.0.0 --url {self.listener.url()}"
-                ],
-                shell=True
+                f'start cmd /k "cd {os.getcwd()} && python Serve.py {self.listener.url()}"',
+                shell=True,
+                creationflags=subprocess.CREATE_NEW_CONSOLE
             )
 
             await asyncio.sleep(1)
@@ -94,7 +94,7 @@ class TelaServidor(Screen):
                 cmd = p.info['cmdline']
                 if cmd:
                     cmd_str = ' '.join(cmd).lower()
-                    if 'textual' in cmd_str or 'cmd.exe' in cmd_str:
+                    if "python serve.py" in cmd_str:
                         try:
                             p.terminate()
                         except Exception:

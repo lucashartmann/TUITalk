@@ -14,6 +14,8 @@ Unidecode
 psutil
 Flask
 flask-cors
-audioop-lts
 textual-image
 textual-colorpicker
+# audioop-lts
+textual-filedrop
+# winget install ffmpeg

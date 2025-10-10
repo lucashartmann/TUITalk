@@ -394,6 +394,12 @@ class TelaInicial(Screen):
                     lst_item = ListItem()
                     lst_item.styles.layout = "horizontal"
                     lista.append(lst_item)
-                    lst_item.mount(Static(user.get_pixel_perfil()), nome_user)
+                    if self.app.servidor == True:
+                        imagem_static = Imagem.Imagem(
+                            user.get_pixel_perfil(), id="stt_foto_perfil")
+                    else:
+                        imagem_static = Image(
+                            user.get_pixel_perfil(), id="stt_foto_perfil")
+                    lst_item.mount(imagem_static, nome_user)
                 else:
                     lista.append(ListItem(nome_user))
