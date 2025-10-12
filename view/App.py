@@ -12,6 +12,10 @@ class App(App):
         "tela_servidor": TelaServidor.TelaServidor
     }
     
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.usuario_logado = None  
+    
     tela = "tela_login"
     servidor = False
 

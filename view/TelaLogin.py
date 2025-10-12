@@ -6,6 +6,8 @@ from view.TelaInicial import TelaInicial
 import time
 from textual_colorpicker import ColorPicker
 from textual.containers import Center
+from model import Usuario
+
 
 class TelaLogin(Screen):
 
@@ -35,18 +37,16 @@ class TelaLogin(Screen):
     def on_button_pressed(self):
         carregar_users = Banco.carregar("banco.db", "usuarios") or {}
         nome_input = self.query_one("#usuario", TextArea).text
-
         cor = self.query_one(ColorPicker).color
         agora = int(time.time())
 
-        if carregar_users and cor:
-                for user in carregar_users.values():
-                    last_seen = user.get_tempo()
-                    if user.get_cor() == cor and agora - last_seen <= 60:
-                        self.notify("ERRO! Cor já escolhida")
-                        return
-
+        # Verifica se a cor já está em uso recentemente
         if cor:
+            for user in carregar_users.values():
+                last_seen = user.get_tempo()
+                if user.get_cor() == cor and agora - last_seen <= 60:
+                    self.notify("ERRO! Cor já escolhida")
+                    return
             try:
                 Color.parse(cor)
             except Exception:
@@ -57,28 +57,13 @@ class TelaLogin(Screen):
             self.notify("ERRO! Valor inválido")
             return
 
+        user = Usuario.Usuario()
+        user.set_nome(nome_input)
+        user.set_cor(cor)
+        user.set_tempo(agora)
 
-        
-        if carregar_users and nome_input in carregar_users.keys():
-            last_seen = carregar_users[nome_input].get_tempo()
-
-            if agora - last_seen <= 60:
-                self.notify("ERRO! Nome já em uso")
-                return
-            else:
-                user = TelaInicial.usuario
-                user.set_nome(nome_input)
-                user.set_cor(cor)
-                user.set_tempo(agora)
-                carregar_users[user.get_nome()] = user
-
-        else:
-            user = TelaInicial.usuario
-            user.set_nome(nome_input)
-            user.set_cor(cor)
-            user.set_tempo(agora)
-            carregar_users[user.get_nome()] = user
-
+        carregar_users[nome_input] = user
+        self.app.usuario_logado = user
         Banco.salvar("banco.db", "usuarios", carregar_users)
 
         self.app.switch_screen("tela_inicial")

@@ -12,3 +12,4 @@ __pycache__/
 .vercel
 Main.py
 textual_serve/
+Teste.py

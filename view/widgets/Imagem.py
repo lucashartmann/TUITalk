@@ -20,7 +20,6 @@ class Imagem(Static):
         self.update(pixels)   
 
     def notify_style_update(self):
-        print("size.width", self.size.width)
-        print("styles.width", self.styles.width)
-        pixels = Pixels.from_image(self.img, resize=(self.styles.width,self.styles.height))
-        self.update(pixels)   
+        if self.size.width and self.size.height:
+            pixels = Pixels.from_image(self.img, resize=(self.size.width, int(self.size.height*2)))
+            self.update(pixels)   
