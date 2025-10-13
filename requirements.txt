@@ -19,3 +19,4 @@ textual-image
 textual-colorpicker
 textual-filedrop
 # winget install ffmpeg
+portalocker

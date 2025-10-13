@@ -402,7 +402,6 @@ class TelaInicial(Screen):
                 # TODO: abrir documento, ou abrir foto dele montou_container_foto
 
     def ligacao(self):
-
         try:
             try:
                 container = self.query_one(ContainerLigacao)
@@ -414,7 +413,6 @@ class TelaInicial(Screen):
                 "banco.db", "chamada_em_curso") or {}
 
             if chamada_em_curso:
-
                 for usuario, frame in chamada_em_curso.items():
                     try:
                         camera = container.query_one(
@@ -444,8 +442,8 @@ class TelaInicial(Screen):
 
         chamada_curso = Banco.carregar("banco.db", "chamada_em_curso") or {}
         print(chamada_curso)
+        
         if chamada_curso:
-
             self.ligacao()
 
         chamada = Banco.carregar("banco.db", "chamada")
