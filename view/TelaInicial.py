@@ -90,7 +90,8 @@ class ContainerLigacao(Container):
 
     def on_button_pressed(self):
         Banco.salvar("banco.db", "acao", "stop_video")
-           
+
+
 class ContainerMessageLigacao(Container):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -136,14 +137,17 @@ class TelaInicial(Screen):
     async def receber_frames(self):
         print("receber_frames", self.usuario.get_nome())
         nova_url = (
-            self.url.replace(
-                "https://", "wss://").replace("http://", "ws://").rstrip("/") + "/ws"
-        )
+                self.url.replace(
+                    "https://", "wss://").replace("http://", "ws://").rstrip("/") + "/ws"
+            )
+        print(nova_url)
         while True:
             try:
-                print("antes de async with websockets.connect(nova_url)", self.usuario.get_nome())
+                print("antes de async with websockets.connect(nova_url)",
+                      self.usuario.get_nome())
                 async with websockets.connect(nova_url) as ws:
-                    print("depois de async with websockets.connect(nova_url)", self.usuario.get_nome())
+                    print("depois de async with websockets.connect(nova_url)",
+                          self.usuario.get_nome())
                     self.ws_ativo = True
 
                     while True:
@@ -157,32 +161,30 @@ class TelaInicial(Screen):
                             data = json.loads(blob)
                         except (json.JSONDecodeError, UnicodeDecodeError):
                             continue
-                        
+
                         frame_bytes = base64.b64decode(data["data"])
                         novo_frame = io.BytesIO(frame_bytes)
-                
+
                         self.salvar_seguro("chamada_em_curso",
-                            {self.usuario.get_nome(): novo_frame}
-                        )
-                        
+                                           {self.usuario.get_nome(): novo_frame}
+                                           )
 
             except Exception as e:
                 print(f"Erro na conexão WebSocket: {e}")
                 self.ws_ativo = False
                 await asyncio.sleep(5)
-                
 
     def salvar_seguro(self, tabela, dados_novos):
         try:
             base_dir = os.path.dirname(os.path.abspath(__file__))
-            caminho = os.path.normpath(os.path.join(base_dir, "..", "data", "banco.db"))
+            caminho = os.path.normpath(os.path.join(
+                base_dir, "..", "data", "banco.db"))
             os.makedirs(os.path.dirname(caminho), exist_ok=True)
             lock_path = caminho + ".lock"
 
             with open(lock_path, "w") as lock_file:
                 portalocker.lock(lock_file, portalocker.LOCK_EX)
 
-                # 🔹 recarrega os dados dentro do lock
                 with shelve.open(caminho, writeback=True) as db:
                     dados_atuais = db.get(tabela, {}) or {}
                     print(f"Antes de salvar ({tabela}): {dados_atuais}")
@@ -190,11 +192,8 @@ class TelaInicial(Screen):
                     dados_atuais.update(dados_novos)
                     db[tabela] = dados_atuais
 
-                # o 'with' já libera o lock
         except Exception as e:
             print("Erro ao salvar de forma segura:", e)
-
-
 
     def start_receber_frames(self):
         print("start_receber_frames")
@@ -414,8 +413,9 @@ class TelaInicial(Screen):
                 container = ContainerLigacao()
                 self.mount(container)
 
-            chamada_em_curso = Banco.carregar("banco.db", "chamada_em_curso") or {}
-            
+            chamada_em_curso = Banco.carregar(
+                "banco.db", "chamada_em_curso") or {}
+
             if chamada_em_curso:
 
                 for usuario, frame in chamada_em_curso.items():
@@ -423,20 +423,18 @@ class TelaInicial(Screen):
                         camera = container.query_one(
                             "#cameras").query_one(f"#{usuario}", ChamadaVideo.Call)
                     except Exception as e:
-                            camera = ChamadaVideo.Call(id=usuario, pixel=True)
-                            container.query_one("#cameras").mount(camera)
+                        camera = ChamadaVideo.Call(id=usuario, pixel=True)
+                        container.query_one("#cameras").mount(camera)
                     camera.update_frame(frame)
-
-                  
 
         except Exception as e:
             print(f"Erro em ligacao(): {e}")
 
     def poll_dados(self):
         print("poll_dados", self.usuario.get_nome())
-        
+
         acao = Banco.carregar("banco.db", "acao")
-        if acao == "video" and self.iniciou_frames ==  False:
+        if acao == "video" and self.iniciou_frames == False:
             self.start_receber_frames()
             self.iniciou_frames = True
         elif acao == "stop-video" and self.parou_frames == False:
@@ -446,11 +444,11 @@ class TelaInicial(Screen):
             self.atendeu = False
             self.montou_notificacao = False
             self.query_one(ContainerLigacao).remove()
-        
+
         chamada_curso = Banco.carregar("banco.db", "chamada_em_curso") or {}
         print(chamada_curso)
         if chamada_curso:
-            
+
             self.ligacao()
 
         chamada = Banco.carregar("banco.db", "chamada")
