@@ -1,10 +1,6 @@
-import base64
-import io
-import cv2
 from PIL import Image
 from rich_pixels import Pixels
 from textual.widgets import Static
-from textual.timer import Timer
 
 
 class Call(Static):

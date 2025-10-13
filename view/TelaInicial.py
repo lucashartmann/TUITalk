@@ -2,7 +2,10 @@ import asyncio
 import time
 import wave
 import io
-
+import json
+import base64
+import os
+import shelve
 
 import portalocker
 from textual.screen import Screen
@@ -22,12 +25,6 @@ from view.widgets import Audio, Video, Imagem, ChamadaVideo
 
 from pydub import AudioSegment
 from rich_pixels import Pixels
-import io
-import json
-import base64
-import io
-import os
-import shelve
 
 
 class ContainerFoto(Container):
@@ -137,9 +134,9 @@ class TelaInicial(Screen):
     async def receber_frames(self):
         print("receber_frames", self.usuario.get_nome())
         nova_url = (
-                self.url.replace(
-                    "https://", "wss://").replace("http://", "ws://").rstrip("/") + "/ws"
-            )
+            self.url.replace(
+                "https://", "wss://").replace("http://", "ws://").rstrip("/") + "/ws"
+        )
         print(nova_url)
         while True:
             try:

@@ -2,7 +2,6 @@ from rich_pixels import Pixels
 from PIL import Image
 from textual.widgets import Static
 import io
-from textual import on
 
 class Imagem(Static):
     

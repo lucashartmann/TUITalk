@@ -113,7 +113,13 @@ class TelaServidor(Screen):
                     shell=True,
                     creationflags=subprocess.CREATE_NEW_CONSOLE
                 )
-                url = f"http://{host}:8000"
+                try:
+                    cert_path = f"{os.getcwd()}/data/cert.pem"
+                    key_path = f"{os.getcwd()}/data/key.pem"
+                    print(key_path)
+                    url = f"https://{host}:8000"
+                except:
+                    url = f"http://{host}:8000"
                 Banco.salvar("ngrok.db", "url", url)
                 self.query_one(Pretty).update(url)
 

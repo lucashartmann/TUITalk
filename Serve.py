@@ -1,9 +1,13 @@
-import asyncio
+import os
 from textual_serve.server import Server
 import sys
-from aiohttp import web
 
 comando = sys.argv[1:]
+
+
+cert_path = f"{os.getcwd()}/data/cert.pem"
+key_path = f"{os.getcwd()}/data/key.pem"
+
 
 if "http" in comando or "https" in comando:
 
@@ -15,10 +19,19 @@ if "http" in comando or "https" in comando:
     )
 
 else:
-    servidor = Server(
-        command="python Main.py",
-        host=comando[-1],
-        port=8000,
-    )
+    try:
+        servidor = Server(
+            command="python Main.py",
+            host=comando[-1],
+            port=8000,
+            ssl_cert=cert_path,
+            ssl_key=key_path
+        )
+    except:
+        servidor = Server(
+            command="python Main.py",
+            host=comando[-1],
+            port=8000,
+        )
 
 servidor.serve()
