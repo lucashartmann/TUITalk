@@ -14,6 +14,7 @@ def salvar(nome_arquivo, chave, dados):
         db[chave] = dados
 
 
+
 def carregar(nome_arquivo, chave):
     caminho = f"data\\{nome_arquivo}"
     try:

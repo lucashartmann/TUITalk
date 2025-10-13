@@ -27,12 +27,6 @@ class TelaLogin(Screen):
             yield Button("Entrar")
         yield Footer()
 
-    nome = ""
-    
-    # @on(ColorPicker.Changed)
-    # def cor_mudou(self, evento = ColorPicker.Changed):
-    #     self.notify(str(self.query_one(ColorPicker).color))
-
 
     def on_button_pressed(self):
         carregar_users = Banco.carregar("banco.db", "usuarios") or {}
@@ -40,7 +34,6 @@ class TelaLogin(Screen):
         cor = self.query_one(ColorPicker).color
         agora = int(time.time())
 
-        # Verifica se a cor já está em uso recentemente
         if cor:
             for user in carregar_users.values():
                 last_seen = user.get_tempo()
@@ -63,7 +56,7 @@ class TelaLogin(Screen):
         user.set_tempo(agora)
 
         carregar_users[nome_input] = user
-        self.app.usuario_logado = user
+        TelaInicial.usuario = user
         Banco.salvar("banco.db", "usuarios", carregar_users)
 
         self.app.switch_screen("tela_inicial")

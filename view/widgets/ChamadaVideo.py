@@ -28,10 +28,8 @@ class Call(Static):
 
     def update_frame(self, frame):
         try:
-            if isinstance(frame, bytes):
-                img = Image.open(io.BytesIO(frame))
-            else:
-                img = Image.open(frame)
+           
+            img = Image.open(frame)
             
             img = self.resize_image(img)
            

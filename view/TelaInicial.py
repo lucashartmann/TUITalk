@@ -1,14 +1,13 @@
 import asyncio
-import json
 import time
 import wave
 import io
 
 
+import portalocker
 from textual.screen import Screen
 from textual.widgets import Input, TextArea, Button, Static, ListItem, ListView, Header, Footer
 from textual.containers import HorizontalScroll, Horizontal, VerticalScroll, HorizontalGroup, Container
-from textual.timer import Timer
 from textual.events import Click
 
 from textual_image.widget import Image
@@ -23,8 +22,12 @@ from view.widgets import Audio, Video, Imagem, ChamadaVideo
 
 from pydub import AudioSegment
 from rich_pixels import Pixels
+import io
+import json
 import base64
 import io
+import os
+import shelve
 
 
 class ContainerFoto(Container):
@@ -82,19 +85,12 @@ class ContainerLigacao(Container):
         with Horizontal():
             yield Button("❌")
             yield Static("ᑕᕼᗩᗰᗩᗪᗩ", id="titulo")
-        with HorizontalGroup():
+        with HorizontalGroup(id="cameras"):
             pass
 
     def on_button_pressed(self):
         Banco.salvar("banco.db", "acao", "stop_video")
-        self.screen.montou_ligacao = False
-        self.screen.atendeu = False
-        self.screen.montou_caller = False
-        self.screen.montou_notificacao = False
-        self.condicao = False
-        self.remove()
-
-
+           
 class ContainerMessageLigacao(Container):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -111,43 +107,106 @@ class ContainerMessageLigacao(Container):
     async def on_button_pressed(self, evento: Button.Pressed):
         await self.remove()
         Banco.deletar("banco.db", "chamada")
-
         if evento.button.id == "bt_ligacao_true":
-            self.parent.atendeu = True
             Banco.salvar("banco.db", "acao", "video")
-        else:
-
-            self.screen.montou_ligacao = False
-            self.screen.atendeu = False
-            self.screen.montou_caller = False
-            self.screen.montou_notificacao = False
+        # else:
+        #     self.screen.montou_ligacao = False
+        #     self.screen.atendeu = False
+        #     self.screen.montou_caller = False
+        #     self.screen.montou_notificacao = False
 
 
 class TelaInicial(Screen):
     CSS_PATH = "css/TelaInicial.tcss"
 
+    usuario = Usuario.Usuario()
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.usuario = self.app.usuario_logado
         self.mensagens = list()
         self._poll_timer = None
-        self.resultado = ""
         self.frame_task = None
-        self.running = True
-        self.atendeu = False
         self.montou_container_foto = False
         self.url = Banco.carregar("ngrok.db", "url")
         self.audio = Audio.Audio("")
-        self.montou_ligacao = False
-        self.montou_caller = False
         self.montou_notificacao = False
-        self.ws_ativo = False
+        self.iniciou_frames = False
+        self.parou_frames = False
+
+    async def receber_frames(self):
+        print("receber_frames", self.usuario.get_nome())
+        nova_url = (
+            self.url.replace(
+                "https://", "wss://").replace("http://", "ws://").rstrip("/") + "/ws"
+        )
+        while True:
+            try:
+                print("antes de async with websockets.connect(nova_url)", self.usuario.get_nome())
+                async with websockets.connect(nova_url) as ws:
+                    print("depois de async with websockets.connect(nova_url)", self.usuario.get_nome())
+                    self.ws_ativo = True
+
+                    while True:
+                        blob = await ws.recv()
+                        acao = Banco.carregar("banco.db", "acao")
+                        if acao != "video":
+                            continue
+                        try:
+                            if isinstance(blob, bytes):
+                                blob = blob.decode("utf-8")
+                            data = json.loads(blob)
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            continue
+                        
+                        frame_bytes = base64.b64decode(data["data"])
+                        novo_frame = io.BytesIO(frame_bytes)
+                
+                        self.salvar_seguro("chamada_em_curso",
+                            {self.usuario.get_nome(): novo_frame}
+                        )
+                        
+
+            except Exception as e:
+                print(f"Erro na conexão WebSocket: {e}")
+                self.ws_ativo = False
+                await asyncio.sleep(5)
+                
+
+    def salvar_seguro(self, tabela, dados_novos):
+        try:
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            caminho = os.path.normpath(os.path.join(base_dir, "..", "data", "banco.db"))
+            os.makedirs(os.path.dirname(caminho), exist_ok=True)
+            lock_path = caminho + ".lock"
+
+            with open(lock_path, "w") as lock_file:
+                portalocker.lock(lock_file, portalocker.LOCK_EX)
+
+                # 🔹 recarrega os dados dentro do lock
+                with shelve.open(caminho, writeback=True) as db:
+                    dados_atuais = db.get(tabela, {}) or {}
+                    print(f"Antes de salvar ({tabela}): {dados_atuais}")
+                    print(f"Adicionando ({tabela}): {dados_novos}")
+                    dados_atuais.update(dados_novos)
+                    db[tabela] = dados_atuais
+
+                # o 'with' já libera o lock
+        except Exception as e:
+            print("Erro ao salvar de forma segura:", e)
+
+
+
+    def start_receber_frames(self):
+        print("start_receber_frames")
+        loop = asyncio.get_event_loop()
+        self.frame_task = loop.create_task(self.receber_frames())
+
+    def stop_receber_frames(self):
+        if self.frame_task:
+            self.frame_task.cancel()
 
     async def on_mount(self):
-        self.usuario = self.app.usuario_logado
-        Banco.salvar("banco.db", "usuario_js", self.usuario.get_nome())
-
-        print(self.usuario.get_nome())
+        print("on_mount", self.usuario.get_nome())
 
         self.query_one("#lv_grupos", ListView).append(Static("Grupos:"))
         self.query_one("#lv_grupos", ListView).append(
@@ -347,6 +406,7 @@ class TelaInicial(Screen):
                 # TODO: abrir documento, ou abrir foto dele montou_container_foto
 
     def ligacao(self):
+
         try:
             try:
                 container = self.query_one(ContainerLigacao)
@@ -354,44 +414,43 @@ class TelaInicial(Screen):
                 container = ContainerLigacao()
                 self.mount(container)
 
-            chamada = Banco.carregar("banco.db", "chamada")
-
-            chamada_em_curso = Banco.carregar(
-                "banco.db", next(iter(chamada.keys()))) or {}
-
-            chamada_em_curso2 = Banco.carregar(
-                "banco.db", self.usuario.get_nome()) or {}
-
-            try:
-                cam = container.query_one(
-                    HorizontalGroup).get_child_by_id(self.usuario.get_nome())
-            except:
-                cam = ChamadaVideo.Call(id=self.usuario.get_nome(), pixel=True)
-                cam.nome_user = self.usuario.get_nome()
-                container.query_one(HorizontalGroup).mount(cam)
-
-            if chamada_em_curso2:
-                cam.update_frame(io.BytesIO(chamada_em_curso2))
-
-            try:
-                cam = container.query_one(
-                    HorizontalGroup).get_child_by_id(next(iter(chamada.keys())))
-            except:
-                cam = ChamadaVideo.Call(
-                    id=next(iter(chamada.keys())), pixel=True)
-                cam.nome_user = next(iter(chamada.keys()))
-                container.query_one(HorizontalGroup).mount(cam)
-
+            chamada_em_curso = Banco.carregar("banco.db", "chamada_em_curso") or {}
+            
             if chamada_em_curso:
-                cam.update_frame(io.BytesIO(chamada_em_curso2))
+
+                for usuario, frame in chamada_em_curso.items():
+                    try:
+                        camera = container.query_one(
+                            "#cameras").query_one(f"#{usuario}", ChamadaVideo.Call)
+                    except Exception as e:
+                            camera = ChamadaVideo.Call(id=usuario, pixel=True)
+                            container.query_one("#cameras").mount(camera)
+                    camera.update_frame(frame)
+
+                  
 
         except Exception as e:
             print(f"Erro em ligacao(): {e}")
 
     def poll_dados(self):
-
+        print("poll_dados", self.usuario.get_nome())
+        
+        acao = Banco.carregar("banco.db", "acao")
+        if acao == "video" and self.iniciou_frames ==  False:
+            self.start_receber_frames()
+            self.iniciou_frames = True
+        elif acao == "stop-video" and self.parou_frames == False:
+            self.iniciou_frames = False
+            self.parou_frames = True
+            self.stop_receber_frames()
+            self.atendeu = False
+            self.montou_notificacao = False
+            self.query_one(ContainerLigacao).remove()
+        
         chamada_curso = Banco.carregar("banco.db", "chamada_em_curso") or {}
+        print(chamada_curso)
         if chamada_curso:
+            
             self.ligacao()
 
         chamada = Banco.carregar("banco.db", "chamada")
