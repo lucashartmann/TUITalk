@@ -10,7 +10,7 @@ import shelve
 import portalocker
 from textual.screen import Screen
 from textual.widgets import Input, TextArea, Button, Static, ListItem, ListView, Header, Footer
-from textual.containers import HorizontalScroll, Horizontal, VerticalScroll, HorizontalGroup, Container
+from textual.containers import HorizontalScroll, Grid, Horizontal, VerticalScroll, HorizontalGroup, Container, Vertical
 from textual.events import Click
 
 from textual_image.widget import Image
@@ -19,12 +19,14 @@ from textual_image.widget import Image
 
 import websockets
 
-from database import Banco
+from database import Banco, Banco2
 from model import Download, Usuario
 from view.widgets import Audio, Video, Imagem, ChamadaVideo
 
 from pydub import AudioSegment
 from rich_pixels import Pixels
+
+import ssl
 
 
 class ContainerFoto(Container):
@@ -82,7 +84,7 @@ class ContainerLigacao(Container):
         with Horizontal():
             yield Button("❌")
             yield Static("ᑕᕼᗩᗰᗩᗪᗩ", id="titulo")
-        with HorizontalGroup(id="cameras"):
+        with Grid(id="cameras"):
             pass
 
     def on_button_pressed(self):
@@ -138,16 +140,21 @@ class TelaInicial(Screen):
                 "https://", "wss://").replace("http://", "ws://").rstrip("/") + "/ws"
         )
         print(nova_url)
-        while True:
+        FPS = 15
+        intervalo = 1 / FPS
+        while True: # TODO: Ficar conectando cria vários processos python e mata a RAM do pc
             try:
-                print("antes de async with websockets.connect(nova_url)",
-                      self.usuario.get_nome())
-                async with websockets.connect(nova_url) as ws:
-                    print("depois de async with websockets.connect(nova_url)",
-                          self.usuario.get_nome())
-                    self.ws_ativo = True
+                print("antes de async with websockets.connect(nova_url)", self.usuario.get_nome())
 
-                    while True:
+                if "https" in self.url:
+                    ssl_context = ssl._create_unverified_context()
+                    async with websockets.connect(nova_url, ssl=ssl_context) as ws:
+
+                        print(
+                            "depois de async with websockets.connect(nova_url)", self.usuario.get_nome())
+                        self.ws_ativo = True
+                        inicio = time.time()
+
                         blob = await ws.recv()
                         acao = Banco.carregar("banco.db", "acao")
                         if acao != "video":
@@ -162,35 +169,60 @@ class TelaInicial(Screen):
                         frame_bytes = base64.b64decode(data["data"])
                         novo_frame = io.BytesIO(frame_bytes)
 
-                        self.salvar_seguro("chamada_em_curso",
-                                           {self.usuario.get_nome(): novo_frame}
-                                           )
+                        Banco2.Banco.salvar_seguro("chamada_em_curso",
+                                                   {self.usuario.get_nome(): novo_frame}
+                                                   )
+
+                        novo_frame.close()
+                        del novo_frame
+                        print("depois de Banco2.Banco.salvar_seguro", self.usuario.get_nome())
+                        duracao = time.time() - inicio
+                        if duracao < intervalo:
+                            await asyncio.sleep(intervalo - duracao)
+
+                else:
+                    async with websockets.connect(nova_url) as ws:
+
+                        print(
+                            "depois de async with websockets.connect(nova_url)", self.usuario.get_nome())
+                        self.ws_ativo = True
+                        inicio = time.time()
+
+                        agora = time.time()
+                        if agora - ultimo_frame < 1/FPS:
+                            continue
+
+                        ultimo_frame = agora
+
+                        blob = await ws.recv()
+                        acao = Banco.carregar("banco.db", "acao")
+                        if acao != "video":
+                            continue
+                        try:
+                            if isinstance(blob, bytes):
+                                blob = blob.decode("utf-8")
+                            data = json.loads(blob)
+                        except (json.JSONDecodeError, UnicodeDecodeError):
+                            continue
+
+                        frame_bytes = base64.b64decode(data["data"])
+                        novo_frame = io.BytesIO(frame_bytes)
+
+                        Banco2.Banco.salvar_seguro("chamada_em_curso",
+                                                   {self.usuario.get_nome(): novo_frame}
+                                                   )
+
+                        novo_frame.close()
+                        del novo_frame
+                        print("depois de Banco2.Banco.salvar_seguro", self.usuario.get_nome())
+                        duracao = time.time() - inicio
+                        if duracao < intervalo:
+                            await asyncio.sleep(intervalo - duracao)
 
             except Exception as e:
                 print(f"Erro na conexão WebSocket: {e}")
                 self.ws_ativo = False
                 await asyncio.sleep(5)
-
-    def salvar_seguro(self, tabela, dados_novos):
-        try:
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            caminho = os.path.normpath(os.path.join(
-                base_dir, "..", "data", "banco.db"))
-            os.makedirs(os.path.dirname(caminho), exist_ok=True)
-            lock_path = caminho + ".lock"
-
-            with open(lock_path, "w") as lock_file:
-                portalocker.lock(lock_file, portalocker.LOCK_EX)
-
-                with shelve.open(caminho, writeback=True) as db:
-                    dados_atuais = db.get(tabela, {}) or {}
-                    print(f"Antes de salvar ({tabela}): {dados_atuais}")
-                    print(f"Adicionando ({tabela}): {dados_novos}")
-                    dados_atuais.update(dados_novos)
-                    db[tabela] = dados_atuais
-
-        except Exception as e:
-            print("Erro ao salvar de forma segura:", e)
 
     def start_receber_frames(self):
         print("start_receber_frames")
@@ -409,17 +441,26 @@ class TelaInicial(Screen):
                 container = ContainerLigacao()
                 self.mount(container)
 
-            chamada_em_curso = Banco.carregar(
-                "banco.db", "chamada_em_curso") or {}
+            chamada_em_curso = Banco2.Banco.carregar("chamada_em_curso") or {}
 
             if chamada_em_curso:
                 for usuario, frame in chamada_em_curso.items():
                     try:
-                        camera = container.query_one(
-                            "#cameras").query_one(f"#{usuario}", ChamadaVideo.Call)
+                        camera = None
+                        for vertical in container.query_one("#cameras").query(Vertical):
+                            camera_procurando = vertical.query_one(
+                                ChamadaVideo.Call)
+                            if camera_procurando.nome_user == usuario:
+                                camera = camera_procurando
+                        if not camera:
+                            raise Exception
                     except Exception as e:
-                        camera = ChamadaVideo.Call(id=usuario, pixel=True)
-                        container.query_one("#cameras").mount(camera)
+                        vt = Vertical()
+                        container.query_one("#cameras").mount(vt)
+                        camera = ChamadaVideo.Call(pixel=True)
+                        camera.nome_user = usuario
+                        vt.mount(camera)
+                        vt.mount(Static(usuario.capitalize()))
                     camera.update_frame(frame)
 
         except Exception as e:
@@ -440,9 +481,9 @@ class TelaInicial(Screen):
             self.montou_notificacao = False
             self.query_one(ContainerLigacao).remove()
 
-        chamada_curso = Banco.carregar("banco.db", "chamada_em_curso") or {}
+        chamada_curso = Banco2.Banco.carregar("chamada_em_curso") or {}
         print(chamada_curso)
-        
+
         if chamada_curso:
             self.ligacao()
 
