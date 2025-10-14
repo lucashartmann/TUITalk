@@ -142,9 +142,10 @@ class TelaInicial(Screen):
         print(nova_url)
         FPS = 15
         intervalo = 1 / FPS
-        while True: # TODO: Ficar conectando cria vários processos python e mata a RAM do pc
+        while True:  # TODO: Ficar conectando cria vários processos python e mata a RAM do pc
             try:
-                print("antes de async with websockets.connect(nova_url)", self.usuario.get_nome())
+                print("antes de async with websockets.connect(nova_url)",
+                      self.usuario.get_nome())
 
                 if "https" in self.url:
                     ssl_context = ssl._create_unverified_context()
@@ -170,12 +171,14 @@ class TelaInicial(Screen):
                         novo_frame = io.BytesIO(frame_bytes)
 
                         Banco2.Banco.salvar_seguro("chamada_em_curso",
-                                                   {self.usuario.get_nome(): novo_frame}
+                                                   {self.usuario.get_nome()
+                                                                          : novo_frame}
                                                    )
 
                         novo_frame.close()
                         del novo_frame
-                        print("depois de Banco2.Banco.salvar_seguro", self.usuario.get_nome())
+                        print("depois de Banco2.Banco.salvar_seguro",
+                              self.usuario.get_nome())
                         duracao = time.time() - inicio
                         if duracao < intervalo:
                             await asyncio.sleep(intervalo - duracao)
@@ -209,12 +212,14 @@ class TelaInicial(Screen):
                         novo_frame = io.BytesIO(frame_bytes)
 
                         Banco2.Banco.salvar_seguro("chamada_em_curso",
-                                                   {self.usuario.get_nome(): novo_frame}
+                                                   {self.usuario.get_nome()
+                                                                          : novo_frame}
                                                    )
 
                         novo_frame.close()
                         del novo_frame
-                        print("depois de Banco2.Banco.salvar_seguro", self.usuario.get_nome())
+                        print("depois de Banco2.Banco.salvar_seguro",
+                              self.usuario.get_nome())
                         duracao = time.time() - inicio
                         if duracao < intervalo:
                             await asyncio.sleep(intervalo - duracao)
@@ -448,20 +453,32 @@ class TelaInicial(Screen):
                     try:
                         camera = None
                         for vertical in container.query_one("#cameras").query(Vertical):
-                            camera_procurando = vertical.query_one(
-                                ChamadaVideo.Call)
-                            if camera_procurando.nome_user == usuario:
-                                camera = camera_procurando
+                            if self.app.servidor == True:
+                                camera_procurando = vertical.query_one(
+                                    ChamadaVideo.Call)
+                                if camera_procurando.nome_user == usuario:
+                                    camera = camera_procurando
+                                    camera.update_frame(frame)
+                                    break
+                            else:
+                                camera_procurando = vertical.query_one(Image)
+                                if camera_procurando.name == usuario:
+                                    camera = camera_procurando
+                                    camera.image(frame)
+                                    break
                         if not camera:
                             raise Exception
                     except Exception as e:
                         vt = Vertical()
                         container.query_one("#cameras").mount(vt)
-                        camera = ChamadaVideo.Call(pixel=True)
-                        camera.nome_user = usuario
+                        if self.app.servidor == True:
+                            camera = ChamadaVideo.Call(pixel=True)
+                            camera.update_frame(frame)
+                            camera.nome_user = usuario
+                        else:
+                            camera = Image(frame, name=usuario)
                         vt.mount(camera)
                         vt.mount(Static(usuario.capitalize()))
-                    camera.update_frame(frame)
 
         except Exception as e:
             print(f"Erro em ligacao(): {e}")
