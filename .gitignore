@@ -13,3 +13,4 @@ __pycache__/
 Main.py
 textual_serve/
 Teste.py
+.venv
