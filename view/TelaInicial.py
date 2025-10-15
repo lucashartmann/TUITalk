@@ -1,7 +1,4 @@
 import asyncio
-import contextlib
-import os
-import tempfile
 import time
 import wave
 import io
@@ -20,7 +17,7 @@ from textual_pdf.pdf_viewer import PDFViewer
 import websockets
 
 from database import Banco
-from model import Download, Usuario
+from model import Usuario
 from view.widgets import Audio, Video, Imagem, ChamadaVideo
 
 from pydub import AudioSegment

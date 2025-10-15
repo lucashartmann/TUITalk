@@ -11,8 +11,10 @@ __pycache__/
 *.log
 .vercel
 Main.py
-textual_serve/
 Teste.py
 .venv
+textual_serve/
 textual_video
+textual_filedrop
+textual_pdf
 Sample Videos.mp4
