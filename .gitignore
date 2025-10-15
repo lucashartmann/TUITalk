@@ -12,6 +12,8 @@ __pycache__/
 .vercel
 Main.py
 textual_serve/
-Teste.py
 textual_video
-Sample Videos.mp4
+textual_filedrop
+textual_pdf
+Teste.py
+vercel.json
