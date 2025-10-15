@@ -11,9 +11,10 @@ __pycache__/
 *.log
 .vercel
 Main.py
+Teste.py
+.venv
 textual_serve/
 textual_video
 textual_filedrop
 textual_pdf
-Teste.py
 vercel.json
