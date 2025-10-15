@@ -504,20 +504,32 @@ class TelaInicial(Screen):
                     try:
                         camera = None
                         for vertical in container.query_one("#cameras").query(Vertical):
-                            camera_procurando = vertical.query_one(
-                                ChamadaVideo.Call)
-                            if camera_procurando.nome_user == usuario:
-                                camera = camera_procurando
+                            if self.app.servidor == True:
+                                camera_procurando = vertical.query_one(
+                                    ChamadaVideo.Call)
+                                if camera_procurando.nome_user == usuario:
+                                    camera = camera_procurando
+                                    camera.update_frame(frame)
+                                    break
+                            else:
+                                camera_procurando = vertical.query_one(Image)
+                                if camera_procurando.name == usuario:
+                                    camera = camera_procurando
+                                    camera.image(frame)
+                                    break
                         if not camera:
                             raise Exception
                     except Exception as e:
                         vt = Vertical()
                         container.query_one("#cameras").mount(vt)
-                        camera = ChamadaVideo.Call(pixel=True)
-                        camera.nome_user = usuario
+                        if self.app.servidor == True:
+                            camera = ChamadaVideo.Call(pixel=True)
+                            camera.update_frame(frame)
+                            camera.nome_user = usuario
+                        else:
+                            camera = Image(frame, name=usuario)
                         vt.mount(camera)
                         vt.mount(Static(usuario.capitalize()))
-                    camera.update_frame(frame)
 
         except Exception as e:
             print(f"Erro em ligacao(): {e}")

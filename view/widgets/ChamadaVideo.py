@@ -4,12 +4,11 @@ from textual.widgets import Static
 
 
 class Call(Static):
-    def __init__(self, pixel=True, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args,**kwargs)
         self.width = 30
         self.height = 30
         self.nome_user = ""
-        self.pixel = pixel
 
     def on_mount(self):
         self.update("Sem câmera")
@@ -29,12 +28,11 @@ class Call(Static):
             
             img = self.resize_image(img)
            
-            if self.pixel:
-                pixels = Pixels.from_image(img)
-                self.update(pixels)
+           
+            pixels = Pixels.from_image(img)
+            self.update(pixels)
       
-        # else:
-        #     self.query_one(TextualImage).image = img
+
         except Exception as e:
             print(f"ChamadaVideo.py update_frame: {e}")
             return
