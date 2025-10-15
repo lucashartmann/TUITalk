@@ -1,25 +1,25 @@
 import asyncio
+import contextlib
+import os
+import tempfile
 import time
 import wave
 import io
 import json
 import base64
-import os
-import shelve
 
-import portalocker
 from textual.screen import Screen
 from textual.widgets import Input, TextArea, Button, Static, ListItem, ListView, Header, Footer
 from textual.containers import HorizontalScroll, Grid, Horizontal, VerticalScroll, HorizontalGroup, Container, Vertical
 from textual.events import Click
 
 from textual_image.widget import Image
-# from textual_filedrop import FileDrop
-# from textual_filedrop import getfiles
+from textual_filedrop import FileDrop
+from textual_pdf.pdf_viewer import PDFViewer
 
 import websockets
 
-from database import Banco, Banco2
+from database import Banco
 from model import Download, Usuario
 from view.widgets import Audio, Video, Imagem, ChamadaVideo
 
@@ -27,6 +27,20 @@ from pydub import AudioSegment
 from rich_pixels import Pixels
 
 import ssl
+
+
+class ContainerDocumento(Container):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def on_mount(self):
+        self.styles.layer = "above"
+
+    def compose(self):
+        yield Button("❌")
+
+    async def on_button_pressed(self):
+        await self.remove()
 
 
 class ContainerFoto(Container):
@@ -170,10 +184,9 @@ class TelaInicial(Screen):
                         frame_bytes = base64.b64decode(data["data"])
                         novo_frame = io.BytesIO(frame_bytes)
 
-                        Banco2.Banco.salvar_seguro("chamada_em_curso",
-                                                   {self.usuario.get_nome()
-                                                                          : novo_frame}
-                                                   )
+                        Banco.salvar_seguro("chamada_em_curso",
+                                            {self.usuario.get_nome(): novo_frame}
+                                            )
 
                         novo_frame.close()
                         del novo_frame
@@ -211,10 +224,9 @@ class TelaInicial(Screen):
                         frame_bytes = base64.b64decode(data["data"])
                         novo_frame = io.BytesIO(frame_bytes)
 
-                        Banco2.Banco.salvar_seguro("chamada_em_curso",
-                                                   {self.usuario.get_nome()
-                                                                          : novo_frame}
-                                                   )
+                        Banco.salvar_seguro("chamada_em_curso",
+                                            {self.usuario.get_nome(): novo_frame}
+                                            )
 
                         novo_frame.close()
                         del novo_frame
@@ -264,6 +276,7 @@ class TelaInicial(Screen):
                 with HorizontalGroup():
                     yield TextArea(placeholder="Digite aqui")
                     yield Button("Enviar", id="bt_enviar_mensagem")
+                    yield Button("📎", id="bt_filedrop")
                     yield Button("🔴", id="gravar")
             yield ListView(id="lv_usuarios")
         yield Footer()
@@ -331,27 +344,62 @@ class TelaInicial(Screen):
                                  self.mensagens)
 
                 case "video":
-                    if self.app.servidor == True:
-                        video = Video.Video(dados["_temp_path"], name=hash(
+                    blob = io.BytesIO(dados["arquivo"])
+
+                    if self.app.servidor:
+                        video = Video.Video(blob, name=hash(
                             dados["arquivo"]), pixel=True)
                     else:
-                        video = Video.Video(
-                            dados["_temp_path"], name=hash(dados["arquivo"]))
+                        video = Video.Video(blob, name=hash(dados["arquivo"]))
+
                     self.query_one("#vs_mensagens", VerticalScroll).mount(
                         nome_user_static, video)
-                    self.mensagens.append(
-                        {"autor": self.usuario.get_nome(), "video": dados["_temp_path"], "id": hash(dados["arquivo"])})
-                    Banco.salvar("banco.db", "mensagens",
-                                 self.mensagens)
+                    self.mensagens.append({
+                        "autor": self.usuario.get_nome(),
+                        "video": blob,
+                        "id": hash(dados["arquivo"])
+                    })
+                    Banco.salvar("banco.db", "mensagens", self.mensagens)
 
                 case "documento":
-                    self.query_one("#vs_mensagens", VerticalScroll).mount(nome_user_static, Static(
-                        dados["nome"], name=hash(dados["arquivo"])))
+                    self.query_one("#vs_mensagens", VerticalScroll).mount(nome_user_static, Static(markup=f"[@click=self.pdf('{dados['arquivo']}')]{dados['nome']}[/]", name=hash(dados["arquivo"]))) # TODO: arrumar
                     self.mensagens.append(
                         {"autor": self.usuario.get_nome(), "documento": dados["arquivo"], "id": hash(dados["arquivo"])})
                     Banco.salvar("banco.db", "mensagens",
                                  self.mensagens)
                     # TODO: implementar self.query_one("#vs_mensagens", VerticalScroll).mount(nome_user_static, Static(nome_do_arquivo.extensao, name=hash(dados["arquivo"])))
+
+    def action_pdf(self, blob):
+        container = ContainerDocumento()
+        self.mount(container)
+        container.mount(PDFViewer(blob))
+
+    def on_file_drop_dropped(self, event: FileDrop.Dropped) -> None:
+        try:
+            path = event.path
+            nome = "".join(event.filenames[-1])
+            ext = nome[nome.index("."):]
+            caminho = "".join(event.filepaths)
+
+            tipo = ""
+            if ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
+                tipo = "imagem"
+            elif ext in [".mp4", ".mov", ".avi", ".mkv", ".webm"]:
+                tipo = "video"
+            elif ext in [".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"]:
+                tipo = "audio"
+            else:
+                tipo = "documento"
+
+            with open(caminho, "rb") as f:
+                blob = f.read()
+
+            dados = {"arquivo": blob, "tipo": tipo, "nome": nome}
+
+            self.exibir_midia(dados)
+            self.query_one(FileDrop).remove()
+        except Exception as e:
+            self.notify(str(e))
 
     async def on_button_pressed(self, event: Button.Pressed):
         input_widget = self.query_one(TextArea)
@@ -359,6 +407,12 @@ class TelaInicial(Screen):
             self.usuario.get_nome(), classes="stt_usuario")
 
         match event.button.id:
+            case "bt_filedrop":
+                try:
+                    self.query_one(FileDrop).remove()
+                except:
+                    self.mount(FileDrop())
+                    self.query_one(FileDrop).focus()
             case "gravar":
                 if not self.audio.is_recording:
                     Banco.salvar("banco.db", "acao", "audio")
@@ -434,10 +488,6 @@ class TelaInicial(Screen):
                     self.mount(ctt_foto)
                     self.montou_container_foto = True
 
-                # else:
-                #     documento = self.documentos[evento.widget.name]
-                # TODO: abrir documento, ou abrir foto dele montou_container_foto
-
     def ligacao(self):
         try:
             try:
@@ -446,7 +496,8 @@ class TelaInicial(Screen):
                 container = ContainerLigacao()
                 self.mount(container)
 
-            chamada_em_curso = Banco2.Banco.carregar("chamada_em_curso") or {}
+            chamada_em_curso = Banco.carregar(
+                "banco.db", "chamada_em_curso") or {}
 
             if chamada_em_curso:
                 for usuario, frame in chamada_em_curso.items():
@@ -498,7 +549,7 @@ class TelaInicial(Screen):
             self.montou_notificacao = False
             self.query_one(ContainerLigacao).remove()
 
-        chamada_curso = Banco2.Banco.carregar("chamada_em_curso") or {}
+        chamada_curso = Banco.carregar("banco.db", "chamada_em_curso") or {}
         print(chamada_curso)
 
         if chamada_curso:
@@ -609,7 +660,36 @@ class TelaInicial(Screen):
                             stt_nome_autor, stt)
 
                 elif "documento" in mensagem.keys():
-                    pass  # TODO: implementar
+                    lista = list(self.query_one(
+                        "#vs_mensagens", VerticalScroll).query(Static))
+                    for stt_exibido in lista:
+                        content = stt_exibido.content
+                        if hasattr(content, 'strip') and isinstance(content, str) and not isinstance(stt_exibido.content, Pixels) and not isinstance(stt_exibido, Pixels):
+                            stt_exibido_conteudo = content.strip()
+                        else:
+                            break
+
+                        if not isinstance(stt_exibido.content, Pixels) and hasattr(stt_exibido.content, 'strip') and isinstance(stt_exibido.content, str):
+                            stt_nome_autor_conteudo = stt_nome_autor.content.strip()
+                        else:
+                            break
+                        if stt_exibido_conteudo == stt_nome_autor_conteudo:
+                            index = lista.index(stt_exibido)
+                            if index + 1 < len(lista):
+                                depois = lista[index + 1]
+                                if not isinstance(depois.content, Pixels) and hasattr(depois.content, 'strip') and isinstance(depois.content, str):
+                                    if depois.name == mensagem["id"]:
+                                        encontrado = True
+                                        break
+                                else:
+                                    break
+
+                    # if encontrado == False:
+                    #     self.query_one("#vs_mensagens", VerticalScroll).mount(stt_nome_autor, Static(
+                    #         f"[@click=self.pdf('{mensagem['documento']}')]{mensagem['nome']}[/]",
+                    #         name=mensagem["id"])
+                    #     )
+
 
                 else:
                     mensagem = Static(mensagem["mensagem"])

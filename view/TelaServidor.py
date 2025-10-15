@@ -13,20 +13,20 @@ from textual.binding import Binding
 from database import Banco
 import socket
 
+
 class TelaServidor(Screen):
-    
 
     BINDINGS = {
         Binding("q", "self.app.exit()", "Encerrar")
     }
-    
+
     def compose(self):
         yield Input(placeholder="auth_token do ngrok")
         yield Static("Ligar Local:")
         yield Switch(value=False)
         yield Static("Ligar Ngrok")
         yield Switch(value=False, id="ngrok")
-            
+
         yield Pretty("Servidor desligado")
 
     async def on_switch_changed(self, evento: Switch.Changed):
@@ -107,6 +107,7 @@ class TelaServidor(Screen):
                 self.query_one(Pretty).update("Servidor desligado")
         else:
             if evento.value == True:
+                os.environ["TEXTUAL_RUN"] = "1"
                 host = self.get_local_ip()
                 self.proc = subprocess.Popen(
                     f'start cmd /k "cd {os.getcwd()} && python Serve.py {host}"',
@@ -124,7 +125,7 @@ class TelaServidor(Screen):
                 self.query_one(Pretty).update(url)
 
             else:
-                
+                os.environ["TEXTUAL_RUN"] = "0"
                 for p in psutil.process_iter(['pid', 'name', 'cmdline']):
                     cmd = p.info['cmdline']
                     if cmd:
@@ -136,8 +137,6 @@ class TelaServidor(Screen):
                                 pass
                 self.query_one(Pretty).update("Servidor desligado")
 
-    
-
     def get_local_ip(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
@@ -148,5 +147,3 @@ class TelaServidor(Screen):
         finally:
             s.close()
         return ip
-
-    

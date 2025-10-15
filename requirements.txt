@@ -19,4 +19,5 @@ textual-image
 textual-colorpicker
 textual-filedrop
 # winget install ffmpeg
-portalocker
+# textual_video
+# textual_pdf

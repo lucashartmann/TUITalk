@@ -30,7 +30,7 @@ TextArea {
     margin: 2;
     min-height: 4;
     background: rgba(78, 64, 44, 1);
-    width: 70%;
+    width: 60%;
     height: auto;
 }
 
@@ -40,7 +40,7 @@ ListView {
     height: 100%;
 }
 
-Audio, Video, Image {
+Audio, Image {
     margin: 0 0 0 4;
 }
 
@@ -51,33 +51,45 @@ Imagem {
 }
 
 Video  {
+    margin: 0 0 0 2;
     width: 36;
     height: 14;
-    background: rgba(61, 51, 37, 1);
+    background: 0%;
 }
 
-Video VerticalGroup {
-   height: 100%;
-   width: 100%;
+Video #video_container {
+    height: 100%;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+    overflow: hidden;
 }
 
-Video Image {
+Video VideoPlayer {
     height: 84%;
     margin-right: 0;
+    margin-left: 0;
     width: 100%;
+    overflow: hidden;
+    background: 0%;
+}
+
+Video VideoPlayer Container {
+    height: 100%;
+    width: 100%;
+    margin-right: 0;
+    margin-left: 0;
+    overflow: hidden;
+}
+
+Video VideoPlayer PlayerControls {
+    display: none;
 }
 
 Video Button {
     width: 100%;
     height: 16%;
-}
-
-Video #video_pixels {
-    height: 84%;
-    width: 100%;
-    margin-left: 0;
-    margin-top: 0;
-    background: orange;
+    margin-left: 4;
 }
 
 
@@ -178,6 +190,12 @@ ContainerFoto Button{
     min-width: 30;
 }
 
-#gravar {
+#gravar, #bt_filedrop {
     margin: 2 0 0 2;
+}
+
+FileDrop {
+    layer: above;
+    height: 50;
+    width: 50;
 }

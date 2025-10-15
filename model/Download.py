@@ -1,22 +1,21 @@
 import os
-import requests
 import io
 import tempfile
 import wave
+import requests
+from urllib.parse import urlparse, parse_qs
 from pydub import AudioSegment
 import yt_dlp
-from urllib.parse import urlparse, parse_qs
 
 
 def baixar_para_memoria_ou_temp(url: str):
-    if "youtube" in url or "yotu.be" in url:
+    if "youtube" in url or "youtu.be" in url:
         return baixar_youtube(url)
     elif "drive.google.com" in url:
         return baixar_drive(url)
 
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-    s = requests.Session()
-    resp = s.get(url, stream=True, timeout=30, headers=headers)
+    resp = requests.get(url, stream=True, timeout=30, headers=headers)
     if resp.status_code == 403:
         return {"error": "403 Forbidden. Tente usar outro Referer/User-Agent ou baixar manualmente."}
     resp.raise_for_status()
@@ -39,100 +38,73 @@ def baixar_para_memoria_ou_temp(url: str):
     content.seek(0)
 
     tipo = "documento"
-    arquivo = None
-    temp_path = None
 
     try:
         if audios:
             tipo = "audio"
             if ext == ".wav" or ctype == "audio/wav":
-                content.seek(0)
                 arquivo = wave.open(content, "rb")
             else:
                 fmt = ext.lstrip(".") if ext else None
                 content.seek(0)
-                if fmt:
-                    arquivo = AudioSegment.from_file(content, format=fmt)
-                else:
-                    fd, temp_path = tempfile.mkstemp(suffix=ext)
-                    os.close(fd)
-                    with open(temp_path, "wb") as f:
-                        f.write(content.getbuffer())
-                    arquivo = AudioSegment.from_file(temp_path)
-                    os.remove(temp_path)
-                    temp_path = None
-        elif fotos or videos:
-            tipo = "imagem" if fotos else "videos"
-            content.seek(0)
+                arquivo = AudioSegment.from_file(content, format=fmt or "mp3")
+        elif fotos:
+            tipo = "imagem"
+            arquivo = content
+        elif videos:
+            tipo = "video"
             arquivo = content
         else:
             tipo = "documento"
-            content.seek(0)
             arquivo = content
 
-        dados = {"arquivo": arquivo, "tipo": tipo, "nome": nome}
-        return dados
+        return {"arquivo": arquivo, "tipo": tipo, "nome": nome}
 
-    except Exception:
-        if temp_path and os.path.exists(temp_path):
-            try:
-                os.remove(temp_path)
-            except Exception:
-                pass
-        fd, temp_path = tempfile.mkstemp(suffix=ext)
-        os.close(fd)
-        with open(temp_path, "wb") as f:
-            f.write(content.getbuffer())
-        arquivo = open(temp_path, "rb")
-        tipo = "documento"
-        dados = {"arquivo": arquivo, "tipo": tipo,
-                 "nome": nome, "_temp_path": temp_path}
-        return dados
+    except Exception as e:
+        return {"error": str(e), "tipo": "erro", "nome": nome}
 
 
 def baixar_youtube(url: str, prefer_audio=False, audio_format="mp3"):
-    ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
-        "outtmpl": os.path.join(tempfile.gettempdir(), "ydl_%(id)s.%(ext)s"),
-        "noplaylist": True,
-    }
+    with tempfile.TemporaryDirectory() as tmpdir:
+        ydl_opts = {
+            "quiet": True,
+            "no_warnings": True,
+            "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
+            "noplaylist": True,
+        }
 
-    if prefer_audio:
-        ydl_opts.update({
-            "format": "bestaudio/best",
-            "postprocessors": [{
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": audio_format,
-                "preferredquality": "192",
-            }],
-        })
-    else:
-
-        ydl_opts.update({
-            "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-        })
-
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(url, download=True)
-        filename = ydl.prepare_filename(info)
         if prefer_audio:
-            base, _ = os.path.splitext(filename)
-            filename = base + f".{audio_format}"
+            ydl_opts.update({
+                "format": "bestaudio/best",
+                "postprocessors": [{
+                    "key": "FFmpegExtractAudio",
+                    "preferredcodec": audio_format,
+                    "preferredquality": "192",
+                }],
+            })
+        else:
+            ydl_opts.update({
+                "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+            })
 
-    ext = os.path.splitext(filename)[1].lower()
-    nome = os.path.basename(filename)
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            filename = ydl.prepare_filename(info)
+            if prefer_audio:
+                base, _ = os.path.splitext(filename)
+                filename = base + f".{audio_format}"
 
-    if prefer_audio:
-        audio = AudioSegment.from_file(filename, format=audio_format)
-        try:
-            os.remove(filename)
-        except Exception:
-            pass
-        return {"arquivo": audio, "tipo": "audio", "nome": nome}
-    else:
-        f = open(filename, "rb")
-        return {"arquivo": f, "tipo": "video", "nome": nome, "_temp_path": filename}
+        with open(filename, "rb") as f:
+            data = f.read()
+        os.remove(filename)
+
+        nome = os.path.basename(filename)
+        ext = os.path.splitext(filename)[1].lower()
+        blob = io.BytesIO(data)
+        blob.seek(0)
+
+        tipo = "audio" if prefer_audio else "video"
+        return {"arquivo": blob, "tipo": tipo, "nome": nome}
 
 
 def baixar_drive(url: str):
@@ -179,19 +151,9 @@ def baixar_drive(url: str):
         tipo = "documento"
 
     content = io.BytesIO()
-    chunk_size = 32768
-    try:
-        for chunk in response.iter_content(chunk_size):
-            if chunk:
-                content.write(chunk)
-        content.seek(0)
-        return {"arquivo": content, "tipo": tipo, "nome": nome}
-    except Exception:
-        fd, temp_path = tempfile.mkstemp(suffix=os.path.splitext(nome)[1])
-        os.close(fd)
-        with open(temp_path, "wb") as f:
-            for chunk in response.iter_content(chunk_size):
-                if chunk:
-                    f.write(chunk)
-        arquivo = open(temp_path, "rb")
-        return {"arquivo": arquivo, "tipo": tipo, "nome": nome, "_temp_path": temp_path}
+    for chunk in response.iter_content(32768):
+        if chunk:
+            content.write(chunk)
+    content.seek(0)
+
+    return {"arquivo": content, "tipo": tipo, "nome": nome}
