@@ -7,17 +7,21 @@ import wave
 from textual.widgets import ProgressBar, Button
 from textual.containers import Horizontal
 from textual.widget import Widget
+import io
 
 
 class Audio(Widget):
-    def __init__(self, audio_segment, nome="", *args, **kwargs):
+    def __init__(self, audio_bytes: bytes, nome: str = "", *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.is_playing = False
-        self.audio_segment = audio_segment
-        self.duration = self.get_duration()
+        self.nome = nome
         self.current_time = 0
         self._play_thread = None
-        self.nome = nome
+        self.fs = 44100
+        self.is_recording = False
+        self.frames = []
+        self.audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
+        self.duration = self.audio_segment.duration_seconds
         self.progress = ProgressBar(
             total=100, show_eta=True, show_percentage=True)
         self.progress.styles.height = 3
@@ -25,26 +29,12 @@ class Audio(Widget):
         self.button = Button("▶️")
         self.button.styles.height = 3
         self.styles.height = 3
-        self.fs = 44100
-        self.is_recording = False
-        self.frames = []
-
-    def get_duration(self):
-        if isinstance(self.audio_segment, AudioSegment):
-            return self.audio_segment.duration_seconds
-        elif isinstance(self.audio_segment, wave.Wave_read):
-            return self.audio_segment.getnframes() / self.audio_segment.getframerate()
-        return 0
 
     def make_progress(self, progress_value):
         self.progress.update(progress=progress_value)
 
     def compose(self):
-        yield Horizontal(
-            self.progress,
-            self.button
-
-        )
+        yield Horizontal(self.progress, self.button)
 
     def on_button_pressed(self):
         self.tocar_audio()
@@ -87,27 +77,14 @@ class Audio(Widget):
             threading.Thread(target=self.update_progress, daemon=True).start()
 
     def play_audio(self):
-        if isinstance(self.audio_segment, AudioSegment):
-            restante = self.audio_segment[self.current_time*1000:]  # em ms
-            samples = np.array(restante.get_array_of_samples())
-            if restante.channels == 2:
-                samples = samples.reshape((-1, 2))
-            sd.play(samples, samplerate=restante.frame_rate)
-            sd.wait()
-            self.is_playing = False
-            self.current_time = 0
-
-        elif isinstance(self.audio_segment, wave.Wave_read):
-            framerate = self.audio_segment.getframerate()
-            start_frame = int(self.current_time * framerate)
-            self.audio_segment.setpos(start_frame)
-            data = self.audio_segment.readframes(
-                self.audio_segment.getnframes() - start_frame)
-            audio = np.frombuffer(data, dtype=np.int16)
-            sd.play(audio, samplerate=framerate)
-            sd.wait()
-            self.is_playing = False
-            self.current_time = 0
+        restante = self.audio_segment[self.current_time * 1000:]  # em ms
+        samples = np.array(restante.get_array_of_samples())
+        if restante.channels == 2:
+            samples = samples.reshape((-1, 2))
+        sd.play(samples, samplerate=restante.frame_rate)
+        sd.wait()
+        self.is_playing = False
+        self.current_time = 0
 
     def update_progress(self):
         start = time.time() - self.current_time
