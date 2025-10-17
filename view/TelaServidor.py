@@ -15,6 +15,8 @@ import socket
 
 
 class TelaServidor(Screen):
+    
+    banco = Banco()
 
     BINDINGS = {
         Binding("q", "self.app.exit()", "Encerrar")
@@ -47,7 +49,7 @@ class TelaServidor(Screen):
                     return
 
                 self.query_one(Pretty).update(self.listener.url())
-                Banco.salvar_um("Url", self.listener.url())
+                self.banco.salvar_um("Url", self.listener.url())
                 os.environ["TEXTUAL_RUN"] = "1"
                 self.proc = subprocess.Popen(
                     f'start cmd /k "cd {os.getcwd()} && python Serve.py {self.listener.url()}"',
@@ -121,7 +123,7 @@ class TelaServidor(Screen):
                     url = f"https://{host}:8000"
                 except:
                     url = f"http://{host}:8000"
-                Banco.salvar_um("Url", url)
+                self.banco.salvar_um("Url", url)
                 self.query_one(Pretty).update(url)
 
             else:
