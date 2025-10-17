@@ -1,7 +1,7 @@
 from textual.screen import Screen
 from textual.widgets import Static,  Button, Header, Footer, TextArea
 from textual.color import Color
-from database import Banco
+from database.Banco import Banco
 from view.TelaInicial import TelaInicial
 import time
 from textual_colorpicker import ColorPicker
@@ -12,6 +12,7 @@ from model import Usuario
 class TelaLogin(Screen):
 
     CSS_PATH = "css/TelaLogin.tcss"
+    bd = Banco()
 
     def compose(self):
         yield Header()
@@ -29,22 +30,18 @@ class TelaLogin(Screen):
 
 
     def on_button_pressed(self):
-        carregar_users = Banco.carregar("banco.db", "usuarios") or {}
+        carregar_users = self.bd.carregar_usuarios() or list()
         nome_input = self.query_one("#usuario", TextArea).text
         cor = self.query_one(ColorPicker).color
         agora = int(time.time())
 
         if cor:
-            for user in carregar_users.values():
+            for user in carregar_users:
                 last_seen = user.get_tempo()
-                if user.get_cor() == cor and agora - last_seen <= 60:
+                if user.get_cor() == cor.hex and agora - last_seen <= 60:
                     self.notify("ERRO! Cor já escolhida")
                     return
-            try:
-                Color.parse(cor)
-            except Exception:
-                self.notify("ERRO! Cor inválida")
-                return
+            
 
         if not nome_input:
             self.notify("ERRO! Valor inválido")
@@ -52,11 +49,15 @@ class TelaLogin(Screen):
 
         user = Usuario.Usuario()
         user.set_nome(nome_input)
-        user.set_cor(cor)
+        if isinstance(cor, Color):
+            user.set_cor(cor.hex)
+        else:
+            user.set_cor(cor)
         user.set_tempo(agora)
 
-        carregar_users[nome_input] = user
         TelaInicial.usuario = user
-        Banco.salvar("banco.db", "usuarios", carregar_users)
+        
+        #TODO: se agora - last_seen <= 60 substitui o usuário
+        self.bd.salvar_usuario(user) 
 
         self.app.switch_screen("tela_inicial")

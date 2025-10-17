@@ -3,12 +3,12 @@ from textual.widget import Widget
 from textual.containers import VerticalGroup
 from textual_video.player import VideoPlayer
 from textual_video.player import ImageType
-
+import io
 
 class Video(Widget):
     def __init__(self, video_path, pixel=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.video_path = video_path
+        self.video_path = io.BytesIO(video_path)
         self.pixel = pixel
         self.video_player = None
 

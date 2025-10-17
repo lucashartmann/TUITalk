@@ -173,3 +173,38 @@ FileDrop {
     height: 50;
     width: 50;
 }
+
+ContainerDocumento {
+    margin: 2;
+    layer: above;
+    width: 70%;
+    height: 70%;
+    align: center middle;
+}
+
+PDFViewer {
+    width: 70%;
+    height: 90%;
+    background: green;
+    color: white;
+    align: center middle;
+}
+
+PDFViewer Image {
+    width: 100%;
+    height: 100%;
+}
+
+#footer_send {
+    width: 100%;
+}
+
+#footer_send TextArea{
+    min-width: 30%;
+    max-width: 100%;
+}
+
+
+#footer_send Button{
+    width: auto;
+}

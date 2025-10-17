@@ -18,7 +18,6 @@ class Audio(Widget):
         self.current_time = 0
         self._play_thread = None
         self.fs = 44100
-        self.is_recording = False
         self.frames = []
         self.audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
         self.duration = self.audio_segment.duration_seconds
@@ -39,30 +38,6 @@ class Audio(Widget):
     def on_button_pressed(self):
         self.tocar_audio()
 
-    def start_recording(self):
-        self.is_recording = True
-        self.frames = []
-
-        def callback(indata, frames, time, status):
-            if self.is_recording:
-                self.frames.append(indata.copy())
-
-        self.stream = sd.InputStream(
-            samplerate=self.fs, channels=1, callback=callback)
-        self.stream.start()
-
-    def stop_recording(self, salvar_path="mensagem.wav"):
-        self.is_recording = False
-        self.stream.stop()
-        self.stream.close()
-
-        audio = np.concatenate(self.frames, axis=0)
-        with wave.open(salvar_path, "wb") as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(self.fs)
-            wf.writeframes((audio * 32767).astype(np.int16).tobytes())
-
     def tocar_audio(self):
         if self.is_playing:
             sd.stop()
@@ -77,7 +52,7 @@ class Audio(Widget):
             threading.Thread(target=self.update_progress, daemon=True).start()
 
     def play_audio(self):
-        restante = self.audio_segment[self.current_time * 1000:]  # em ms
+        restante = self.audio_segment[self.current_time * 1000:]  
         samples = np.array(restante.get_array_of_samples())
         if restante.channels == 2:
             samples = samples.reshape((-1, 2))
