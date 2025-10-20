@@ -1,15 +1,17 @@
 from textual.screen import Screen
 from textual.widgets import Static,  Button, Header, Footer, TextArea
 from textual.color import Color
-from database import Banco
+from database.Banco import Banco
 from view.TelaInicial import TelaInicial
 import time
 from textual_colorpicker import ColorPicker
 from textual.containers import Center
+from model import Usuario
 
 class TelaLogin(Screen):
 
     CSS_PATH = "css/TelaLogin.tcss"
+    bd = Banco()
 
     def compose(self):
         yield Header()
@@ -25,60 +27,54 @@ class TelaLogin(Screen):
             yield Button("Entrar")
         yield Footer()
 
-    nome = ""
-    
-    # @on(ColorPicker.Changed)
-    # def cor_mudou(self, evento = ColorPicker.Changed):
-    #     self.notify(str(self.query_one(ColorPicker).color))
-
-
     def on_button_pressed(self):
-        carregar_users = Banco.carregar("banco.db", "usuarios") or {}
+        carregar_users = self.bd.carregar_usuarios() or list()
         nome_input = self.query_one("#usuario", TextArea).text
-
         cor = self.query_one(ColorPicker).color
         agora = int(time.time())
 
-        if carregar_users and cor:
-                for user in carregar_users.values():
-                    last_seen = user.get_tempo()
-                    if user.get_cor() == cor and agora - last_seen <= 60:
-                        self.notify("ERRO! Cor já escolhida")
-                        return
+        user = Usuario.Usuario()
+
+        ja_existe = False
+        susbtituir = False
 
         if cor:
-            try:
-                Color.parse(cor)
-            except Exception:
-                self.notify("ERRO! Cor inválida")
-                return
+            for usuario in carregar_users:
+                last_seen = usuario.get_tempo()
+                if usuario.get_cor() == cor.hex and agora - last_seen <= 60:
+                    self.notify("ERRO! Cor já escolhida")
+                    ja_existe = True
+                    break
+                elif usuario.get_cor() == cor.hex and agora - last_seen > 60:
+                    user = usuario
+                    susbtituir = True
+                    break
 
         if not nome_input:
             self.notify("ERRO! Valor inválido")
             return
 
-
-        
-        if carregar_users and nome_input in carregar_users.keys():
-            last_seen = carregar_users[nome_input].get_tempo()
-
-            if agora - last_seen <= 60:
-                self.notify("ERRO! Nome já em uso")
-                return
-            else:
-                user = TelaInicial.usuario
-                user.set_nome(nome_input)
-                user.set_cor(cor)
-                user.set_tempo(agora)
-                carregar_users[user.get_nome()] = user
-
-        else:
-            user = TelaInicial.usuario
+        if not ja_existe:
             user.set_nome(nome_input)
-            user.set_cor(cor)
+            if isinstance(cor, Color):
+                user.set_cor(cor.hex)
+            else:
+                user.set_cor(cor)
+            user.set_foto("")
             user.set_tempo(agora)
-            carregar_users[user.get_nome()] = user
 
-        Banco.salvar("banco.db", "usuarios", carregar_users)
+            TelaInicial.usuario = user
 
-        self.app.switch_screen("tela_inicial")
+            if susbtituir:
+                self.bd.atualizar("Usuario", "foto", "cor",
+                                  user.get_foto(), cor.hex)
+                self.bd.atualizar("Usuario", "status", "cor",
+                                  user.get_status(), cor.hex)
+                self.bd.atualizar("Usuario", "nome", "cor",
+                                  user.get_nome(), cor.hex)
+                self.bd.atualizar("Usuario", "tempo", "cor",
+                                  user.get_tempo(), cor.hex)
+            else:
+                self.bd.salvar_usuario(user)
+
+            self.app.switch_screen("tela_inicial")

@@ -2,17 +2,19 @@ __pycache__
 data/
 assets/
 mensagem.wav
-Teste.py
-Main.py
-textual_serve/
 utils/
 vercel/cache
-# Ignorar arquivos de cache
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-# Ignorar arquivos de log
 *.log
 .vercel
 Main.py
+Teste.py
+.venv
+textual_serve/
+textual_video
+textual_filedrop
+textual_pdf
+vercel.json

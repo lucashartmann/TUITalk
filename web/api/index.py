@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
-import os
+from flask_cors import CORS
+import queue
 
 app = Flask(__name__)
 
 current_url = None
+
+CORS(app)
 
 
 @app.route("/set_url", methods=["POST"])
@@ -33,9 +36,9 @@ def health_check():
     return jsonify({"status": "ok", "url": current_url})
 
 
-if __name__ == '__main__':
-    port = int(os.environ.get('FLASK_PORT', 5000))
-    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+def run_flask():
+    app.run(port=5000)
 
-    print(f"Iniciando Flask na porta {port}")
-    app.run(host='0.0.0.0', port=port, debug=debug)
+
+if __name__ == "__main__":
+    run_flask()

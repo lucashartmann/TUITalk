@@ -1,16 +1,23 @@
 class Usuario:
     def __init__(self):
-        self.pixel_perfil = ""
+        self.id = ""
+        self.foto = ""
         self.cor = ""
         self.status = ""
         self.nome = ""
         self.tempo = ""
 
-    def get_pixel_perfil(self):
-        return self.pixel_perfil
+    def get_id(self):
+        return self.id
 
-    def set_pixel_perfil(self, value):
-        self.pixel_perfil = value
+    def set_id(self, novo_id):
+        self.id = novo_id
+
+    def get_foto(self):
+        return self.foto
+
+    def set_foto(self, nova_foto):
+        self.foto = nova_foto
 
     def get_cor(self):
         return self.cor
