@@ -12,7 +12,6 @@ from textual.events import Click
 from textual_image.widget import SixelImage
 from textual_image.widget import HalfcellImage
 
-from textual_filedrop import FileDrop
 from textual_pdf.pdf_viewer import PDFViewer
 
 import websockets
@@ -245,7 +244,6 @@ class TelaInicial(Screen):
                 with HorizontalGroup(id="footer_send"):
                     yield TextArea(placeholder="Digite aqui")
                     yield Button("Enviar", id="bt_enviar_mensagem")
-                    yield Button("📎", id="bt_filedrop")
                     yield Button("🔴", id="gravar")
             yield ListView(id="lv_usuarios")
         yield Footer()
@@ -383,55 +381,20 @@ class TelaInicial(Screen):
     def handle_user_update(self, data):
         self.atualizar_lista_users(self.listar_usuarios())
 
-    async def on_file_drop_dropped(self, event: FileDrop.Dropped) -> None:
-        try:
-            nome = "".join(event.filenames[-1])
-            ext = nome[nome.index("."):].lower()
-            caminho = "".join(event.filepaths)
-            tipo = ""
-            if ext in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
-                tipo = "imagem"
-            elif ext in [".mp4", ".mov", ".avi", ".mkv", ".webm"]:
-                tipo = "video"
-            elif ext in [".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"]:
-                tipo = "audio"
-            else:
-                tipo = "documento"
-            with open(caminho, "rb") as f:
-                blob = f.read()
-            if self.filedrop_perfil:
-                if tipo == "imagem":
-                    self.usuario.set_foto(blob)
-                    self.banco.atualizar(
-                        "Usuario", "foto", "cor", blob, self.usuario.get_cor())
-                    await self.send_user_update()
-                    self.notify("Foto de perfil atualizada!")
-                else:
-                    self.notify("ERRO: Arquivo não é imagem!")
-                self.filedrop_perfil = False
-            else:
-                hash_val = hash(blob)
-                dados = {
-                    "autor": self.usuario.get_nome(),
-                    "tipo": tipo,
-                    "arquivo": base64.b64encode(blob).decode(),
-                    "nome": nome,
-                    "hash": hash_val
-                }
-                if self.ws:
-                    await self.ws.send(json.dumps(["message", dados]))
-            self.query_one(FileDrop).remove()
-        except Exception as e:
-            self.notify(str(e))
+    # if self.filedrop_perfil:
+    #     if tipo == "imagem":
+    #         self.usuario.set_foto(blob)
+    #         self.banco.atualizar(
+    #             "Usuario", "foto", "cor", blob, self.usuario.get_cor())
+    #         await self.send_user_update()
+    #         self.notify("Foto de perfil atualizada!")
+    #     else:
+    #         self.notify("ERRO: Arquivo não é imagem!")
+    #     self.filedrop_perfil = False
 
     async def on_button_pressed(self, event: Button.Pressed):
         input_widget = self.query_one(TextArea)
         match event.button.id:
-            case "bt_filedrop":
-                try:
-                    self.query_one(FileDrop).remove()
-                except:
-                    self.mount(FileDrop())
             case "gravar":
                 if not self.is_recording:
                     if self.ws:
@@ -468,13 +431,8 @@ class TelaInicial(Screen):
                 if self.ws:
                     await self.ws.send(json.dumps(["call", dados]))
             elif isinstance(event.widget, Static) and "👤" in event.widget.content:
-                try:
-                    self.query_one(FileDrop).remove()
-                    self.filedrop_perfil = False
-                except:
-                    self.mount(FileDrop())
-                    self.query_one(FileDrop).focus()
-                    self.filedrop_perfil = True
+                pass
+                # self.filedrop_perfil = True
 
     def pdf(self, hash_val):
         self.app.action_pdf(hash_val)
